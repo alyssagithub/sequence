@@ -59,6 +59,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 
 	const function Finish()
 		Dragging = false
+		Session.EndMerge()
 		Place()
 	end
 

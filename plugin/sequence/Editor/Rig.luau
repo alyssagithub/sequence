@@ -144,7 +144,9 @@ function Rig.Apply(Loaded: Rig, Pose: {[string]: CFrame})
 	Loaded.Applying = true
 
 	for _, Joint in Loaded.Joints do
-		Joint.Part1.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * (Pose[Joint.Name] or CFrame.identity) * Joint.Motor.C1:Inverse()
+		if Joint.Part1.Parent and Joint.Part0.Parent then
+			Joint.Part1.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * (Pose[Joint.Name] or CFrame.identity) * Joint.Motor.C1:Inverse()
+		end
 	end
 
 	Loaded.Applying = false

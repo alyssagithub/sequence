@@ -42,8 +42,10 @@ const function LoadInto(Sequence: KeyframeSequence)
 		return
 	end
 
-	Session.Replace(Read)
-	Session.Say(if Problem then Problem else `Opened {Read.Name}`)
+	Session.Confirm("Open", function()
+		Session.Replace(Read)
+		Session.Say(if Problem then Problem else `Opened {Read.Name}`)
+	end)
 end
 
 const function OpenMenu(Anchor: GuiObject)
@@ -171,6 +173,9 @@ return function()
 			Width = 170,
 			Bold = true,
 			LayoutOrder = 2,
+			OnBlur = function()
+				Session.ImportPrompt(false)
+			end,
 			OnChange = function(Text: string)
 				if Session.ImportPrompt() then
 					Session.ImportPrompt(false)
@@ -217,7 +222,9 @@ return function()
 				return Session.Rig() == nil
 			end,
 			OnClick = function()
-				Session.Replace(Clip.New("Animation"))
+				Session.Confirm("New", function()
+					Session.Replace(Clip.New("Animation"))
+				end)
 			end,
 		},
 		Create "TextButton" {
@@ -268,7 +275,6 @@ return function()
 			end,
 			OnClick = function()
 				Saver.Publish(Session.Current(), Session.Rig() :: Rig.Rig, Session.Plugin :: Plugin)
-				Session.Dirty(false)
 			end,
 		},
 		Create "Frame" {
@@ -318,7 +324,7 @@ return function()
 				return Session.Rig() ~= nil
 			end,
 			OnClick = function()
-				Session.ReleaseRig()
+				Session.Confirm("Release", Session.ReleaseRig)
 			end,
 		},
 	}

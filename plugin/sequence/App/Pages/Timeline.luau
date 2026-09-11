@@ -20,6 +20,7 @@ const LanePadding = 10
 type Drag = {
 	Kind: "Scrub" | "Keys" | "Marker",
 	StartX: number,
+	StartTime: number,
 	Applied: number,
 	Marker: Clip.Marker?,
 }
@@ -50,7 +51,7 @@ return function()
 
 	const function Fit(Length: number, Width: number)
 		Offset(0)
-		Zoom(math.max(20, (Width - LanePadding * 2 - 8) / Length))
+		Zoom(math.clamp((Width - LanePadding * 2 - 8) / math.max(Length, 1 / 30), 20, 5000))
 	end
 
 	Vide.effect(function()
@@ -223,7 +224,7 @@ return function()
 						Name = "Event",
 						Value = "",
 					}))
-					Session.SelectedMarker(Time)
+					Session.SelectedMarker(Clip.FindMarker(Session.Current(), Time, "Event"))
 				end,
 			},
 		}, 220)
@@ -233,7 +234,7 @@ return function()
 		Time: () -> number,
 		Selected: () -> boolean,
 		Square: (() -> boolean)?,
-		OnDown: (Shift: boolean) -> (),
+		OnDown: (Shift: boolean, X: number) -> (),
 		OnMenu: (Position: Vector2) -> (),
 		Muted: boolean?,
 	})
@@ -263,7 +264,7 @@ return function()
 			end,
 			InputBegan = function(Input: InputObject)
 				if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-					Props.OnDown(UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift))
+					Props.OnDown(UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift), Input.Position.X)
 				elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 					Props.OnMenu(Vector2.new(Input.Position.X, Input.Position.Y))
 				end
@@ -315,13 +316,23 @@ return function()
 		}
 	end
 
-	const function StartDrag(Kind: "Scrub" | "Keys" | "Marker", X: number, Marker: Clip.Marker?)
+	const function StartDrag(Kind: "Scrub" | "Keys" | "Marker", X: number, StartTime: number, Marker: Clip.Marker?)
 		Drag = {
 			Kind = Kind,
 			StartX = X,
+			StartTime = StartTime,
 			Applied = 0,
 			Marker = Marker,
 		}
+	end
+
+	const function EndDrag()
+		if not Drag then
+			return
+		end
+
+		Drag = nil
+		Session.EndMerge()
 	end
 
 	const function Row(Joint: Rig.Joint, Order: () -> number)
@@ -336,7 +347,7 @@ return function()
 		end
 
 		const function HasKeyNow(): boolean
-			return Session.KeyAt(Joint.Name, Session.SnapTime(Session.Time())) ~= nil
+			return not Session.Playing() and Session.KeyAt(Joint.Name, Session.SnapTime(Session.Time())) ~= nil
 		end
 
 		return Create "Frame" {
@@ -444,7 +455,7 @@ return function()
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 						Session.SelectedKeys({})
 						Session.Seek(TimeAt(Input.Position.X))
-						StartDrag("Scrub", Input.Position.X)
+						StartDrag("Scrub", Input.Position.X, Session.Time())
 					elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 						LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), Joint.Name)
 					end
@@ -468,10 +479,10 @@ return function()
 						Square = function()
 							return Key.EasingStyle == "Constant"
 						end,
-						OnDown = function(Shift: boolean)
+						OnDown = function(Shift: boolean, X: number)
 							Session.SelectKey(Joint.Name, Key.Time, Shift)
 							Session.Seek(Key.Time)
-							StartDrag("Keys", XOf(Key.Time) + LaneLeft())
+							StartDrag("Keys", X, Key.Time)
 						end,
 						OnMenu = function(Position: Vector2)
 							if not Session.IsSelected(Joint.Name, Key.Time) then
@@ -565,7 +576,7 @@ return function()
 
 					Session.Stop()
 					Session.Seek(TimeAt(Input.Position.X))
-					StartDrag("Scrub", Input.Position.X)
+					StartDrag("Scrub", Input.Position.X, Session.Time())
 				end,
 
 				Vide.action(function(Object: Frame)
@@ -650,12 +661,14 @@ return function()
 					OnClick = function()
 						const Time = Session.SnapTime(Session.Time())
 
-						Session.Edit(Clip.SetMarker(Session.Current(), {
+						const Marker = {
 							Time = Time,
 							Name = "Event",
 							Value = "",
-						}))
-						Session.SelectedMarker(Time)
+						}
+
+						Session.Edit(Clip.SetMarker(Session.Current(), Marker))
+						Session.SelectedMarker(Clip.FindMarker(Session.Current(), Time, "Event"))
 					end,
 				}
 			),
@@ -669,7 +682,7 @@ return function()
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 						Session.SelectedMarker(nil)
 						Session.Seek(TimeAt(Input.Position.X))
-						StartDrag("Scrub", Input.Position.X)
+						StartDrag("Scrub", Input.Position.X, Session.Time())
 					elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 						LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), nil)
 					end
@@ -691,11 +704,11 @@ return function()
 						ZIndex = 5,
 						InputBegan = function(Input: InputObject)
 							if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-								Session.SelectedMarker(Marker.Time)
+								Session.SelectedMarker(Marker)
 								Session.Seek(Marker.Time)
-								StartDrag("Marker", XOf(Marker.Time) + LaneLeft(), Marker)
+								StartDrag("Marker", Input.Position.X, Marker.Time, Marker)
 							elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
-								Session.SelectedMarker(Marker.Time)
+								Session.SelectedMarker(Marker)
 								Overlay.MenuAt(Vector2.new(Input.Position.X, Input.Position.Y), {{
 									Label = "Delete event",
 									Action = function()
@@ -715,7 +728,7 @@ return function()
 							Name = "flag",
 							Size = Settings.SmallText,
 							Colour = function()
-								return if Session.SelectedMarker() == Marker.Time then Theme.Colors.Accent() else Theme.Colors.Text()
+								return if Session.SelectedMarker() == Marker then Theme.Colors.Accent() else Theme.Colors.Text()
 							end,
 							LayoutOrder = 1,
 						},
@@ -724,7 +737,7 @@ return function()
 							Size = UDim2.fromScale(0, 1),
 							BackgroundTransparency = 1,
 							TextColor3 = function()
-								return if Session.SelectedMarker() == Marker.Time then Theme.Colors.Accent() else Theme.Colors.DimText()
+								return if Session.SelectedMarker() == Marker then Theme.Colors.Accent() else Theme.Colors.DimText()
 							end,
 							TextSize = Settings.SmallText,
 							FontFace = Font.fromEnum(Enum.Font.BuilderSans),
@@ -773,7 +786,7 @@ return function()
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 						Session.SelectedKeys({})
 						Session.Seek(TimeAt(Input.Position.X))
-						StartDrag("Scrub", Input.Position.X)
+						StartDrag("Scrub", Input.Position.X, Session.Time())
 					elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 						LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), nil)
 					end
@@ -793,10 +806,10 @@ return function()
 
 							return false
 						end,
-						OnDown = function(Shift: boolean)
+						OnDown = function(Shift: boolean, X: number)
 							Session.SelectColumn(Time(), Shift)
 							Session.Seek(Time())
-							StartDrag("Keys", XOf(Time()) + LaneLeft())
+							StartDrag("Keys", X, Time())
 						end,
 						OnMenu = function(Position: Vector2)
 							Session.SelectColumn(Time(), false)
@@ -826,7 +839,7 @@ return function()
 			return
 		end
 
-		const Wanted = Session.SnapTime(Session.Time() + (X - Active.StartX) / Zoom()) - Session.Time()
+		const Wanted = Session.ToFrame(Active.StartTime + (X - Active.StartX) / Zoom()) - Active.StartTime
 		const Delta = Wanted - Active.Applied
 
 		if math.abs(Delta) < 0.0005 then
@@ -853,8 +866,11 @@ return function()
 		}
 
 		Session.Edit(Clip.SetMarker(Clip.RemoveMarker(Session.Current(), Marker), Moved), "DragMarker")
-		Session.SelectedMarker(Moved.Time)
-		Active.Marker = Moved
+
+		const Placed = Clip.FindMarker(Session.Current(), Moved.Time, Moved.Name)
+
+		Session.SelectedMarker(Placed)
+		Active.Marker = Placed
 		Active.Applied = Wanted
 	end
 
@@ -876,15 +892,23 @@ return function()
 					Offset(math.max(0, Under - (Input.Position.X - LaneLeft() - LanePadding) / Scaled))
 				elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
 					UserZoomed(true)
-					Offset(math.max(0, Offset() - Input.Position.Z * 40 / Zoom()))
+					Offset(math.clamp(Offset() - Input.Position.Z * 40 / Zoom(), 0, math.max(0, Session.Current().Length - (LaneWidth() - LanePadding * 2) / Zoom())))
 				end
 			end
 		end,
 		InputEnded = function(Input: InputObject)
 			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-				Drag = nil
+				EndDrag()
 			end
 		end,
+
+		Vide.action(function()
+			Vide.cleanup(UserInputService.InputEnded:Connect(function(Input: InputObject)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+					EndDrag()
+				end
+			end))
+		end),
 
 		Create "Frame" {
 			Name = "Stack",

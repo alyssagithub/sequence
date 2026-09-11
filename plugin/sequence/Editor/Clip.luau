@@ -97,7 +97,7 @@ end
 function Clip.MoveKey(Current: Clip, JointName: string, Time: number, NewTime: number): Clip
 	const Key = Clip.FindKey(Current, JointName, Time)
 
-	if not Key or Time == NewTime then
+	if not Key or Time == NewTime or Clip.FindKey(Current, JointName, NewTime) then
 		return Current
 	end
 
@@ -126,6 +126,16 @@ function Clip.KeyTimes(Current: Clip): {number}
 	return Times
 end
 
+function Clip.FindMarker(Current: Clip, Time: number, Name: string): Marker?
+	for _, Marker in Current.Markers do
+		if math.abs(Marker.Time - Time) < 0.0005 and Marker.Name == Name then
+			return Marker
+		end
+	end
+
+	return nil
+end
+
 function Clip.SetMarker(Current: Clip, Marker: Marker): Clip
 	const Kept = Sift.Array.filter(Current.Markers, function(Other: Marker)
 		return math.abs(Other.Time - Marker.Time) >= 0.0005 or Other.Name ~= Marker.Name
@@ -142,26 +152,24 @@ function Clip.RemoveMarker(Current: Clip, Marker: Marker): Clip
 	})
 end
 
-function Clip.SetLength(Current: Clip, Length: number): Clip
-	const Tracks = {}
+function Clip.LastTime(Current: Clip): number
+	local Last = 0
 
-	for Name, Track in Current.Tracks do
-		const Keys = Sift.Array.filter(Track.Keys, function(Key: Key)
-			return Key.Time <= Length + 0.0005
-		end)
-
-		if #Keys > 0 then
-			Tracks[Name] = {Keys = Keys}
+	for _, Track in Current.Tracks do
+		for _, Key in Track.Keys do
+			Last = math.max(Last, Key.Time)
 		end
 	end
 
-	return Sift.Dictionary.merge(Current, {
-		Length = Length,
-		Tracks = Tracks,
-		Markers = Sift.Array.filter(Current.Markers, function(Marker: Marker)
-			return Marker.Time <= Length + 0.0005
-		end),
-	})
+	for _, Marker in Current.Markers do
+		Last = math.max(Last, Marker.Time)
+	end
+
+	return Last
+end
+
+function Clip.SetLength(Current: Clip, Length: number): Clip
+	return Sift.Dictionary.merge(Current, {Length = math.max(Length, Clip.LastTime(Current))})
 end
 
 return Clip

@@ -32,7 +32,7 @@ const function MakeGhost(Source: Model, Tint: Color3, Parent: Instance): Rig.Rig
 			Descendant.CanTouch = false
 			Descendant.CastShadow = false
 			Descendant.Anchored = true
-		elseif Descendant:IsA("Decal") or Descendant:IsA("Texture") or Descendant:IsA("LuaSourceContainer") or Descendant:IsA("Humanoid") or Descendant:IsA("Sound") or Descendant:IsA("ParticleEmitter") or Descendant:IsA("Light") or Descendant:IsA("Accoutrement") or Descendant:IsA("Clothing") or Descendant:IsA("Attachment") then
+		elseif not Descendant:IsA("Motor6D") and not Descendant:IsA("Model") then
 			Descendant:Destroy()
 		end
 	end

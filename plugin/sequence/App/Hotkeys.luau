@@ -1,6 +1,7 @@
 --!strict
 const UserInputService = game:GetService("UserInputService")
 const Session = require(script.Parent.Parent.Editor.Session)
+const Overlay = require(script.Parent.Overlay)
 
 const Hotkeys = {}
 
@@ -19,6 +20,14 @@ function Hotkeys.Handle(Input: InputObject)
 		return
 	end
 
+	if Overlay.Open() then
+		if Input.KeyCode == Enum.KeyCode.Escape then
+			Overlay.Close()
+		end
+
+		return
+	end
+
 	const Control = Held(Enum.KeyCode.LeftControl, Enum.KeyCode.RightControl)
 	const Shift = Held(Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift)
 	const Key = Input.KeyCode
@@ -27,7 +36,7 @@ function Hotkeys.Handle(Input: InputObject)
 		Session.TogglePlay()
 	elseif Key == Enum.KeyCode.K then
 		Session.KeyAll()
-	elseif Key == Enum.KeyCode.Delete or Key == Enum.KeyCode.Backspace then
+	elseif Key == Enum.KeyCode.Delete then
 		Session.DeleteSelectedKeys()
 	elseif Key == Enum.KeyCode.Left then
 		Session.StepFrames(if Shift then -5 else -1)

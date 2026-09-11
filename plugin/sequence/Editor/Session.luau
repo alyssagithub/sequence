@@ -1,6 +1,8 @@
 --!strict
 const RunService = game:GetService("RunService")
 const Selection = game:GetService("Selection")
+const UserInputService = game:GetService("UserInputService")
+const ChangeHistoryService = game:GetService("ChangeHistoryService")
 const Vide = require(script.Parent.Parent.Packages.vide)
 const Sift = require(script.Parent.Parent.Packages.sift)
 const Clip = require(script.Parent.Clip)
@@ -30,7 +32,8 @@ const Session = {
 	UndoCount = Vide.source(0),
 	RedoCount = Vide.source(0),
 	ImportPrompt = Vide.source(false),
-	SelectedMarker = Vide.source(nil :: number?),
+	SelectedMarker = Vide.source(nil :: Clip.Marker?),
+	Confirming = Vide.source(nil :: string?),
 	Collapsed = Vide.source({} :: {[string]: boolean}),
 	Plugin = nil :: Plugin?,
 }
@@ -41,7 +44,10 @@ local LastMergeKey: string?
 local Heartbeat: RBXScriptConnection?
 const JointConnections: {RBXScriptConnection} = {}
 local SelectionConnection: RBXScriptConnection?
+local ReleaseConnection: RBXScriptConnection?
+local RigGoneConnection: RBXScriptConnection?
 local NoticeToken = 0
+local ConfirmToken = 0
 
 function Session.Say(Text: string)
 	NoticeToken += 1
@@ -66,6 +72,55 @@ function Session.SnapTime(Time: number): number
 	return math.round(Clamped * Session.FrameRate()) / Session.FrameRate()
 end
 
+function Session.ToFrame(Time: number): number
+	if not Session.Snap() then
+		return math.max(0, Time)
+	end
+
+	return math.max(0, math.round(Time * Session.FrameRate()) / Session.FrameRate())
+end
+
+function Session.Confirm(Label: string, Action: () -> ())
+	if not Session.Dirty() or Session.Confirming() == Label then
+		Session.Confirming(nil)
+		Action()
+
+		return
+	end
+
+	ConfirmToken += 1
+	Session.Confirming(Label)
+	Session.Say(`Unsaved changes will be lost, press {Label} again to go ahead`)
+
+	const Token = ConfirmToken
+
+	task.delay(5, function()
+		if ConfirmToken == Token then
+			Session.Confirming(nil)
+		end
+	end)
+end
+
+function Session.EndMerge()
+	LastMergeKey = nil
+end
+
+const function Prune(Current: Clip.Clip)
+	const Kept = Sift.Array.filter(Session.SelectedKeys(), function(Ref: KeyRef)
+		return Clip.FindKey(Current, Ref.Joint, Ref.Time) ~= nil
+	end)
+
+	if #Kept ~= #Session.SelectedKeys() then
+		Session.SelectedKeys(Kept)
+	end
+
+	const Marker = Session.SelectedMarker()
+
+	if Marker and not table.find(Current.Markers, Marker) then
+		Session.SelectedMarker(Clip.FindMarker(Current, Marker.Time, Marker.Name))
+	end
+end
+
 function Session.Edit(NewClip: Clip.Clip, MergeKey: string?)
 	if NewClip == Session.Current() then
 		return
@@ -83,6 +138,7 @@ function Session.Edit(NewClip: Clip.Clip, MergeKey: string?)
 
 	LastMergeKey = MergeKey
 	Session.Current(NewClip)
+	Prune(NewClip)
 	Session.Dirty(true)
 	Session.UndoCount(#Undo)
 	Session.RedoCount(#Redo)
@@ -98,6 +154,7 @@ function Session.Undo()
 	table.insert(Redo, Session.Current())
 	LastMergeKey = nil
 	Session.Current(Previous)
+	Prune(Previous)
 	Session.Time(math.min(Session.Time(), Previous.Length))
 	Session.UndoCount(#Undo)
 	Session.RedoCount(#Redo)
@@ -113,6 +170,7 @@ function Session.Redo()
 	table.insert(Undo, Session.Current())
 	LastMergeKey = nil
 	Session.Current(Next)
+	Prune(Next)
 	Session.UndoCount(#Undo)
 	Session.RedoCount(#Redo)
 end
@@ -363,6 +421,16 @@ function Session.MoveSelectedKeys(Offset: number, MergeKey: string?)
 		return
 	end
 
+	for _, Ref in Refs do
+		const Blocking = Clip.FindKey(Session.Current(), Ref.Joint, Ref.Time + Clamped)
+
+		if Blocking and not Session.IsSelected(Ref.Joint, Ref.Time + Clamped) then
+			Session.Say(`{Ref.Joint} already has a keyframe there`)
+
+			return
+		end
+	end
+
 	const Ordered = table.clone(Refs)
 
 	table.sort(Ordered, function(A: KeyRef, B: KeyRef)
@@ -443,7 +511,7 @@ function Session.Paste()
 	const Pasted = {}
 
 	for _, Entry in Copied do
-		const Time = Session.SnapTime(Start + Entry.Offset)
+		const Time = Session.ToFrame(Start + Entry.Offset)
 
 		Edited = Clip.SetKey(Edited, Entry.Joint, Sift.Dictionary.merge(Entry.Key, {Time = Time}))
 		table.insert(Pasted, {Joint = Entry.Joint, Time = Time})
@@ -502,17 +570,28 @@ const function Watch(Loaded: Rig.Rig)
 
 	for _, Joint in Loaded.Joints do
 		table.insert(JointConnections, Joint.Part1:GetPropertyChangedSignal("CFrame"):Connect(function()
-			if Loaded.Applying or Session.Playing() or Session.Rig() ~= Loaded then
+			if Loaded.Applying or Session.Playing() or Session.Rig() ~= Loaded or not Joint.Part1.Parent then
 				return
 			end
 
 			const Read = Rig.ReadTransform(Joint)
+			const Expected = Pose.Sample(Session.Current(), Session.Time())
 
-			if Read:FuzzyEq(Pose.Sample(Session.Current(), Session.Time())[Joint.Name] or CFrame.identity, 0.001) then
+			if Read:FuzzyEq(Expected[Joint.Name] or CFrame.identity, 0.001) then
 				return
 			end
 
-			Session.SetJointTransform(Joint.Name, Read, `Drag {Joint.Name}`)
+			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+				Session.SetJointTransform(Joint.Name, Read, `Drag {Joint.Name}`)
+
+				return
+			end
+
+			task.defer(function()
+				if Session.Rig() == Loaded and not Loaded.Applying then
+					Rig.Apply(Loaded, Expected)
+				end
+			end)
 		end))
 	end
 end
@@ -526,9 +605,19 @@ function Session.LoadRig(Model: Model): boolean
 
 	Session.ReleaseRig()
 	Rig.Hold(Loaded)
+	ChangeHistoryService:SetEnabled(false)
 	Session.Rig(Loaded)
 	Watch(Loaded)
 	Session.Replace(Clip.New("Animation"))
+
+	RigGoneConnection = Model.AncestryChanged:Connect(function()
+		if Model:IsDescendantOf(workspace) then
+			return
+		end
+
+		Session.ReleaseRig()
+		Session.Say(`{Model.Name} left the workspace, so the rig was released`)
+	end)
 
 	return true
 end
@@ -544,14 +633,21 @@ function Session.ReleaseRig()
 
 	table.clear(JointConnections)
 
+	if RigGoneConnection then
+		RigGoneConnection:Disconnect()
+		RigGoneConnection = nil
+	end
+
 	if not Loaded then
 		return
 	end
 
 	Rig.Release(Loaded)
+	ChangeHistoryService:SetEnabled(true)
 	Session.Rig(nil)
 	Session.SelectedJoint(nil)
 	Session.SelectedKeys({})
+	Session.SelectedMarker(nil)
 end
 
 function Session.SelectJoint(JointName: string?)
@@ -578,6 +674,12 @@ function Session.Start(CurrentPlugin: Plugin)
 		Rig.Apply(Loaded, Pose.Sample(Session.Current(), Session.Time()))
 	end)
 
+	ReleaseConnection = UserInputService.InputEnded:Connect(function(Input: InputObject)
+		if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+			LastMergeKey = nil
+		end
+	end)
+
 	SelectionConnection = Selection.SelectionChanged:Connect(function()
 		const Loaded = Session.Rig()
 		const Picked = Selection:Get()[1]
@@ -600,6 +702,11 @@ function Session.Destroy()
 	if SelectionConnection then
 		SelectionConnection:Disconnect()
 		SelectionConnection = nil
+	end
+
+	if ReleaseConnection then
+		ReleaseConnection:Disconnect()
+		ReleaseConnection = nil
 	end
 end
 

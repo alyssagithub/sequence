@@ -83,19 +83,7 @@ return function()
 	end
 
 	const function Marker(): Clip.Marker?
-		const Time = Session.SelectedMarker()
-
-		if not Time then
-			return nil
-		end
-
-		for _, Found in Session.Current().Markers do
-			if math.abs(Found.Time - Time) < 0.0005 then
-				return Found
-			end
-		end
-
-		return nil
+		return Session.SelectedMarker()
 	end
 
 	const function ShowKeys(): boolean
@@ -279,6 +267,7 @@ return function()
 
 					if First then
 						Session.MoveSelectedKeys(Session.SnapTime(Time) - First.Time)
+						Session.EndMerge()
 					end
 				end,
 			},
@@ -307,11 +296,18 @@ return function()
 						return
 					end
 
+					if Clip.FindMarker(Session.Current(), Found.Time, Name) then
+						Session.Say("An event with that name is already on this frame")
+
+						return
+					end
+
 					Session.Edit(Clip.SetMarker(Clip.RemoveMarker(Session.Current(), Found), {
 						Time = Found.Time,
 						Name = Name,
 						Value = Found.Value,
 					}))
+					Session.SelectedMarker(Clip.FindMarker(Session.Current(), Found.Time, Name))
 				end,
 			},
 			Label("Value", 3),
@@ -336,6 +332,7 @@ return function()
 						Name = Found.Name,
 						Value = Value,
 					}))
+					Session.SelectedMarker(Clip.FindMarker(Session.Current(), Found.Time, Found.Name))
 				end,
 			},
 			Label(function()

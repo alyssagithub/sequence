@@ -1,5 +1,6 @@
 --!strict
 const KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
+const ChangeHistoryService = game:GetService("ChangeHistoryService")
 const Selection = game:GetService("Selection")
 const Clip = require(script.Parent.Clip)
 const Rig = require(script.Parent.Rig)
@@ -134,7 +135,7 @@ function Saver.FromSequence(Sequence: KeyframeSequence, Loaded: Rig.Rig): (Clip.
 	local Read = Clip.New(Sequence.Name)
 
 	Read.Looping = Sequence.Loop
-	Read.Priority = Sequence.Priority.Name
+	Read.Priority = if table.find(Clip.Priorities, Sequence.Priority.Name) then Sequence.Priority.Name else "Action"
 
 	local Length = 0
 
@@ -221,6 +222,8 @@ function Saver.List(Loaded: Rig.Rig): {KeyframeSequence}
 end
 
 function Saver.Save(Current: Clip.Clip, Loaded: Rig.Rig): KeyframeSequence
+	ChangeHistoryService:SetEnabled(true)
+
 	const Folder = Saver.SavesFolder(Loaded, true) :: Instance
 	const Sequence = Saver.ToSequence(Current, Loaded)
 
@@ -231,6 +234,8 @@ function Saver.Save(Current: Clip.Clip, Loaded: Rig.Rig): KeyframeSequence
 	end
 
 	Sequence.Parent = Folder
+	ChangeHistoryService:SetWaypoint(`Save animation {Current.Name}`)
+	ChangeHistoryService:SetEnabled(false)
 
 	return Sequence
 end

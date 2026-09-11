@@ -13,6 +13,7 @@ type Props = {
 	Size: UDim2?,
 	LayoutOrder: number?,
 	Bold: boolean?,
+	OnBlur: (() -> ())?,
 }
 
 return function(Props: Props)
@@ -66,6 +67,10 @@ return function(Props: Props)
 
 					if Trimmed ~= Props.Value() then
 						Props.OnChange(Trimmed)
+					end
+
+					if Props.OnBlur then
+						Props.OnBlur()
 					end
 
 					Box.Text = Props.Value()
