@@ -7,31 +7,50 @@ An animation plugin for Roblox Studio.
 ```
 plugin/sequence/
   Plugin.legacy.luau     bootstrap: loads settings, mounts the app, tears it down on unload
-  Config.luau            name, version, widget id, icon font
+  Config.luau            name, version, widget id
   Settings.luau          plugin settings as vide sources, saved through plugin:SetSetting
-  Format.luau            duration and clock formatting
+  Format.luau            timecode and degree formatting
+  Editor/
+    Session.luau         every piece of editor state as vide sources, plus undo, playback, selection
+    Clip.luau            the animation data: tracks of keys per joint, markers, length, priority
+    Rig.luau             scans a model for Motor6D joints, anchors it, writes poses as part CFrames
+    Pose.luau            samples a clip at a time
+    Easing.luau          the engine's own pose easing curves, measured against a playtest
+    Saver/               clip to KeyframeSequence and back, AnimSaves, publish, import by asset id
+    Gizmo/               ArcHandles and Handles on the selected joint
+    OnionSkin/           ghost copies of the rig at the previous and next keyframe
+    ClipSchema.luau      typed schema used when reading a sequence back in
   App/
-    App.luau             creates the widget and toolbar, mounts the page tree
-    Widget.luau          the dock widget
+    App.luau             creates the widget and toolbar, starts the editor, mounts the page tree
+    Widget.luau          the dock widget, bottom docked
     Toolbar.luau         the toolbar button
     Theme.luau           colours bound to Studio's own theme, repaints on theme change
-    Components/          Button, IconButton, Icon, Toggle, Slider
-    Pages/Main.luau      the page the widget opens on
+    Overlay.luau         the popup layer that menus and dropdowns open into
+    Hotkeys.luau         keyboard shortcuts while the widget has the mouse
+    Components/          Button, IconButton, Icon, Toggle, Dropdown, NumberField, TextField
+    Pages/               Main, TopBar, Transport, Timeline, Inspector
   Packages/
-    reel, sift, vide, typed   thin modules that require into _Index, the layout Loom writes
-    _Index/                  one folder per package at its pinned version, vendor code, never edited
+    vide, sift, typed, reel, lucide-icons   thin modules that require into _Index, the layout Loom writes
+    _Index/                                 one folder per package at its pinned version, vendor code, never edited
   Testing/               the harness below
+tools/build_rbxmx.py     builds plugin/ into an rbxmx that the Studio bridge can load, without Rojo
 ```
 
-## Working on it
+## What it does
 
-Open `place/sequence.rbxl`. It began life as a copy of Claudio's place, so on first open delete
-`ServerStorage.Claudio` and point Script Sync at this repo's `plugin/` instead; after that,
-`ServerStorage.sequence` mirrors the folder. The place file is not tracked by git. Edits on disk land in the place and edits in the place land on disk. Do not create instances under `ServerStorage.sequence` at runtime and expect them to survive: the sync only keeps what came from disk.
+Pick a model with Motor6D joints, and every joint becomes a track. Move a part with Studio's own
+Move and Rotate tools, or with the gizmo on the selected joint, and a keyframe lands at the
+playhead. Keyframes carry an easing style and direction that preview exactly as the engine plays
+them (Cubic is written out as CubicV2 so In means accelerate). Events go on the lane above the
+summary row. Save writes a KeyframeSequence into the rig's AnimSaves, Open lists what is there,
+Publish saves then opens Studio's upload window, and an asset id can be imported through the
+name box. Onion skin shows the neighbouring keyframes as tinted ghosts. Undo and redo are the
+plugin's own and do not go through Studio's history.
 
-Every script follows the shared Roblox ruleset in the vault. The short version: PascalCase everywhere, `const` for every immutable local and local function, guard clauses, no comments, no trailing newline, no speculative API, string interpolation over concatenation, and vide `create()` for UI.
-
-`Packages/` is vendor code and stays as it came. reel is `snake_case` and that is correct; do not rename it. Loom installs from the wally index and names the thin modules `scope/name`; a slash is not a valid file name, so Script Sync refuses the whole tree until they are renamed to plain `name`. typed is not on wally, so its `_Index` entry is the `lib/` folder from the tagged GitHub release with a `wally.toml` module written by hand to match.
+Keys: Space plays, K keys the selected joint or every joint, Delete removes selected keys, Left
+and Right step a frame (Shift for five), Home and End jump, R and T switch the gizmo, Ctrl+Z,
+Ctrl+Y, Ctrl+C, Ctrl+V, Ctrl+D and Ctrl+A do what they say, Escape clears the selection.
+Ctrl+wheel over the timeline zooms, Shift+wheel pans, right click opens the menus.
 
 ## Testing harness
 
@@ -41,7 +60,7 @@ Every script follows the shared Roblox ruleset in the vault. The short version: 
 const Testing = require(game:GetService("ServerStorage").Sequence.Testing)
 
 Testing.Mount(plugin)       -- clone the source beside itself and open it in a test widget
-Testing.Show("MainPage")    -- stage that element on a SurfaceGui the viewport can photograph
+Testing.Show("MainPage", 960, 420)   -- stage that element on a SurfaceGui the viewport can photograph, at an optional width and height
 Testing.Hide()              -- clear the stage and put the camera back
 Testing.Paint("Light")      -- repaint the mount as the other theme without changing Studio
 Testing.Colours()           -- every colour drawn, counted, so hardcoded ones stand out
