@@ -27,7 +27,9 @@ plugin/Sequence/
 
 ## Working on it
 
-Studio's Script Sync is pointed at `plugin/` so that `ServerStorage.Sequence` mirrors the folder. Edits on disk land in the place and edits in the place land on disk. Do not create instances under `ServerStorage.Sequence` at runtime and expect them to survive: the sync only keeps what came from disk.
+Open `place/sequence.rbxl`. It began life as a copy of Claudio's place, so on first open delete
+`ServerStorage.Claudio` and point Script Sync at this repo's `plugin/` instead; after that,
+`ServerStorage.Sequence` mirrors the folder. The place file is not tracked by git. Edits on disk land in the place and edits in the place land on disk. Do not create instances under `ServerStorage.Sequence` at runtime and expect them to survive: the sync only keeps what came from disk.
 
 Every script follows the shared Roblox ruleset in the vault. The short version: PascalCase everywhere, `const` for every immutable local and local function, guard clauses, no comments, no trailing newline, no speculative API, string interpolation over concatenation, and vide `create()` for UI.
 
