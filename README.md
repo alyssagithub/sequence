@@ -18,10 +18,8 @@ plugin/sequence/
     Components/          Button, IconButton, Icon, Toggle, Slider
     Pages/Main.luau      the page the widget opens on
   Packages/
-    vide                 the UI framework; create() is how UI is built, no cloned templates
-    sift                 immutable table utilities
-    typed                runtime schema validation
-    reel                 custom animation solver, unityjaeger/reel 0.2.0 at commit e01ca4a
+    reel, sift, vide, typed   thin modules that require into _Index, the layout Loom writes
+    _Index/                  one folder per package at its pinned version, vendor code, never edited
   Testing/               the harness below
 ```
 
@@ -33,7 +31,7 @@ Open `place/sequence.rbxl`. It began life as a copy of Claudio's place, so on fi
 
 Every script follows the shared Roblox ruleset in the vault. The short version: PascalCase everywhere, `const` for every immutable local and local function, guard clauses, no comments, no trailing newline, no speculative API, string interpolation over concatenation, and vide `create()` for UI.
 
-`Packages/` is vendor code and stays as it came. reel is `snake_case` and that is correct; do not rename it.
+`Packages/` is vendor code and stays as it came. reel is `snake_case` and that is correct; do not rename it. Loom installs from the wally index and names the thin modules `scope/name`; a slash is not a valid file name, so Script Sync refuses the whole tree until they are renamed to plain `name`. typed is not on wally, so its `_Index` entry is the `lib/` folder from the tagged GitHub release with a `wally.toml` module written by hand to match.
 
 ## Testing harness
 
