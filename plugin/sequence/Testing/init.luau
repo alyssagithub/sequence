@@ -218,7 +218,7 @@ function Testing.Hide(): string
 	return "Cleared the stage and put the camera back"
 end
 
-function Testing.Show(Name: string?, Narrowed: number?): string
+function Testing.Show(Name: string?, Wanted: number?, WantedHeight: number?): string
 	Testing.Hide()
 
 	const Widget = PluginGuiService:FindFirstChild("SequenceTestWidget")
@@ -289,8 +289,8 @@ function Testing.Show(Name: string?, Narrowed: number?): string
 	Lighting.GlobalShadows = false
 
 	const Pixels = 100
-	const Width = Narrowed or Shown.AbsoluteSize.X
-	const Height = Shown.AbsoluteSize.Y
+	const Width = Wanted or Shown.AbsoluteSize.X
+	const Height = WantedHeight or Shown.AbsoluteSize.Y
 
 	const Screen = Instance.new("Part")
 
@@ -325,6 +325,7 @@ function Testing.Show(Name: string?, Narrowed: number?): string
 	Surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	Surface.PixelsPerStud = Pixels
 	Surface.LightInfluence = 0
+	Surface.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	Surface.Parent = Screen
 
 	const Copy = Shown:Clone()

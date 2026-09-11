@@ -1,25 +1,27 @@
 --!strict
 const Vide = require(script.Parent.Parent.Parent.Packages.vide)
-const Settings = require(script.Parent.Parent.Parent.Settings)
 const Theme = require(script.Parent.Parent.Theme)
 
 const Create = Vide.create
 
-return function(Key: string)
-	const function On(): boolean
-		return Settings.Get(Key)() == true
-	end
+type Props = {
+	On: () -> boolean,
+	OnChange: (boolean) -> (),
+	LayoutOrder: number?,
+}
 
+return function(Props: Props)
 	return Create "TextButton" {
 		Name = "Toggle",
 		Size = UDim2.fromOffset(38, 20),
 		BackgroundColor3 = function()
-			return if On() then Theme.Colors.Accent() else Theme.Colors.Button()
+			return if Props.On() then Theme.Colors.Accent() else Theme.Colors.Button()
 		end,
 		Text = "",
 		AutoButtonColor = false,
+		LayoutOrder = Props.LayoutOrder,
 		Activated = function()
-			Settings.Set(Key, not On())
+			Props.OnChange(not Props.On())
 		end,
 
 		Create "UICorner" {CornerRadius = UDim.new(1, 0)},
@@ -32,10 +34,10 @@ return function(Key: string)
 			Size = UDim2.fromOffset(14, 14),
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = function()
-				return UDim2.new(0, if On() then 21 else 3, 0.5, 0)
+				return UDim2.new(0, if Props.On() then 21 else 3, 0.5, 0)
 			end,
 			BackgroundColor3 = function()
-				return if On() then Theme.Colors.AccentText() else Theme.Colors.DimText()
+				return if Props.On() then Theme.Colors.AccentText() else Theme.Colors.DimText()
 			end,
 
 			Create "UICorner" {CornerRadius = UDim.new(1, 0)},

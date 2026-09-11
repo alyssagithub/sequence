@@ -1,31 +1,15 @@
 --!strict
 const Format = {}
 
-function Format.Duration(Milliseconds: number): string
-	if Milliseconds < 1000 then
-		return `{Milliseconds}ms`
-	end
+function Format.Timecode(Seconds: number, FrameRate: number): string
+	const Frames = math.round(Seconds * FrameRate)
+	const Whole = Frames // FrameRate
 
-	if Milliseconds < 60000 then
-		return `{string.format("%.1f", Milliseconds / 1000)}s`
-	end
-
-	const Minutes = Milliseconds // 60000
-	const Seconds = math.floor((Milliseconds % 60000) / 1000)
-
-	if Minutes < 60 then
-		return `{Minutes}m {Seconds}s`
-	end
-
-	return `{Minutes // 60}h {Minutes % 60}m`
+	return `{Whole}:{string.format("%02d", Frames - Whole * FrameRate)}`
 end
 
-function Format.Clock(Seconds: number): string
-	if Seconds < 60 then
-		return `{Seconds}s`
-	end
-
-	return `{Seconds // 60}m {Seconds % 60}s`
+function Format.Degrees(Radians: number): string
+	return `{math.round(math.deg(Radians) * 10) / 10}`
 end
 
 return Format

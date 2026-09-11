@@ -14,7 +14,7 @@ function Widget.Create(CurrentPlugin: Plugin): DockWidgetPluginGui
 		return Reused
 	end
 
-	const Made, Created = pcall(CurrentPlugin.CreateDockWidgetPluginGuiAsync, CurrentPlugin, "SequenceTestWidget", DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Left, true, true, 360, 520, 240, 240))
+	const Made, Created = pcall(CurrentPlugin.CreateDockWidgetPluginGuiAsync, CurrentPlugin, "SequenceTestWidget", DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Bottom, true, true, 960, 420, 520, 260))
 
 	if not Made then
 		error(`Sequence could not open its testing window: {Created}`)

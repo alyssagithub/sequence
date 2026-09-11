@@ -1,0 +1,33 @@
+{
+  "className": "Folder",
+  "children": {
+    "Pivot": {
+      "className": "Part",
+      "properties": {
+        "Anchored": true,
+        "CanCollide": false,
+        "CanQuery": false,
+        "CanTouch": false,
+        "CastShadow": false,
+        "Transparency": 1,
+        "Size": {"Type": "Vector3", "X": 1, "Y": 1, "Z": 1},
+        "Locked": true
+      }
+    },
+    "Arcs": {
+      "className": "ArcHandles",
+      "properties": {
+        "Color3": {"Type": "Color3", "R": 0.96, "G": 0.62, "B": 0.2},
+        "Visible": false
+      }
+    },
+    "Movers": {
+      "className": "Handles",
+      "properties": {
+        "Color3": {"Type": "Color3", "R": 0.3, "G": 0.7, "B": 1},
+        "Style": {"Type": "Enum", "Value": 1},
+        "Visible": false
+      }
+    }
+  }
+}

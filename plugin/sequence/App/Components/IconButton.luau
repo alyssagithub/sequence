@@ -1,30 +1,23 @@
 --!strict
 const Vide = require(script.Parent.Parent.Parent.Packages.vide)
-const Config = require(script.Parent.Parent.Parent.Config)
 const Settings = require(script.Parent.Parent.Parent.Settings)
 const Theme = require(script.Parent.Parent.Theme)
+const Icon = require(script.Parent.Icon)
 
 const Create = Vide.create
 
 type Props = {
-	Icon: any,
+	Icon: string | () -> string,
 	OnClick: () -> (),
 	LayoutOrder: number?,
 	Visible: (() -> boolean)?,
-	Size: (() -> number)?,
+	Size: (number | () -> number)?,
 	Tooltip: (string | () -> string)?,
 	Disabled: (() -> boolean)?,
-	DisabledTooltip: string?,
 	Active: (() -> boolean)?,
+	Position: UDim2?,
+	AnchorPoint: Vector2?,
 }
-
-const function Read(Value: (string | () -> string)?): string
-	if type(Value) == "function" then
-		return Value()
-	end
-
-	return Value or ""
-end
 
 return function(Props: Props)
 	const Hovered = Vide.source(false)
@@ -33,37 +26,30 @@ return function(Props: Props)
 	local Anchor: TextButton
 
 	const function Room(): number
-		return if Props.Size then Props.Size() else Settings.TextSize()
+		return if Props.Size then Vide.read(Props.Size) else Settings.TextSize()
+	end
+
+	const function Off(): boolean
+		return Props.Disabled ~= nil and Props.Disabled()
 	end
 
 	return Create "TextButton" {
 		Name = "IconButton",
 		Size = function()
-			return UDim2.fromOffset(Room() + 10, Room() + 6)
+			return UDim2.fromOffset(Room() + 12, Room() + 8)
 		end,
 		BackgroundColor3 = Theme.Colors.Button,
 		BackgroundTransparency = function()
-			return if Hovered() then 0 else 1
+			return if Hovered() and not Off() then 0 else 1
 		end,
-		FontFace = Config.IconFont,
-		Text = Props.Icon,
-		TextColor3 = function()
-			if Props.Disabled and Props.Disabled() then
-				return Theme.Colors.Border()
-			end
-
-			if Props.Active and Props.Active() then
-				return Theme.Colors.Accent()
-			end
-
-			return if Hovered() then Theme.Colors.Text() else Theme.Colors.DimText()
-		end,
-		TextSize = Props.Size or Settings.TextSize,
+		Text = "",
 		AutoButtonColor = false,
 		LayoutOrder = Props.LayoutOrder,
 		Visible = Props.Visible,
+		Position = Props.Position,
+		AnchorPoint = Props.AnchorPoint,
 		Activated = function()
-			if Props.Disabled and Props.Disabled() then
+			if Off() then
 				return
 			end
 
@@ -72,22 +58,24 @@ return function(Props: Props)
 		MouseEnter = function()
 			Hovered(true)
 
-			if Anchor then
-				const Screen = Anchor:FindFirstAncestorWhichIsA("LayerCollector")
-				const Bottom = if Screen then Screen.AbsolutePosition.Y + Screen.AbsoluteSize.Y else math.huge
-				const Right = if Screen then Screen.AbsolutePosition.X + Screen.AbsoluteSize.X else math.huge
-				const Left = if Screen then Screen.AbsolutePosition.X else -math.huge
-				const Middle = Anchor.AbsolutePosition.X + Anchor.AbsoluteSize.X / 2
+			if not Anchor then
+				return
+			end
 
-				Below(Bottom - (Anchor.AbsolutePosition.Y + Anchor.AbsoluteSize.Y) > 30)
+			const Screen = Anchor:FindFirstAncestorWhichIsA("LayerCollector")
+			const Bottom = if Screen then Screen.AbsolutePosition.Y + Screen.AbsoluteSize.Y else math.huge
+			const Right = if Screen then Screen.AbsolutePosition.X + Screen.AbsoluteSize.X else math.huge
+			const Left = if Screen then Screen.AbsolutePosition.X else -math.huge
+			const Middle = Anchor.AbsolutePosition.X + Anchor.AbsoluteSize.X / 2
 
-				if Right - Middle < 90 then
-					Side(1)
-				elseif Middle - Left < 90 then
-					Side(0)
-				else
-					Side(0.5)
-				end
+			Below(Bottom - (Anchor.AbsolutePosition.Y + Anchor.AbsoluteSize.Y) > 30)
+
+			if Right - Middle < 90 then
+				Side(1)
+			elseif Middle - Left < 90 then
+				Side(0)
+			else
+				Side(0.5)
 			end
 		end,
 		MouseLeave = function()
@@ -98,6 +86,23 @@ return function(Props: Props)
 			Anchor = Object
 		end),
 
+		Icon {
+			Name = Props.Icon,
+			Size = Props.Size,
+			Position = UDim2.fromScale(0.5, 0.5),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Colour = function()
+				if Off() then
+					return Theme.Colors.Border()
+				end
+
+				if Props.Active and Props.Active() then
+					return Theme.Colors.Accent()
+				end
+
+				return if Hovered() then Theme.Colors.Text() else Theme.Colors.DimText()
+			end,
+		},
 		Create "TextLabel" {
 			Name = "Tooltip",
 			AnchorPoint = function()
@@ -113,14 +118,10 @@ return function(Props: Props)
 			FontFace = Font.fromEnum(Enum.Font.BuilderSans),
 			ZIndex = 60,
 			Visible = function()
-				return Hovered() and (Props.Tooltip ~= nil or Props.DisabledTooltip ~= nil)
+				return Hovered() and Props.Tooltip ~= nil
 			end,
 			Text = function()
-				if Props.Disabled and Props.Disabled() then
-					return Props.DisabledTooltip or Read(Props.Tooltip)
-				end
-
-				return Read(Props.Tooltip)
+				return if Props.Tooltip then Vide.read(Props.Tooltip) else ""
 			end,
 
 			Create "UICorner" {CornerRadius = UDim.new(0, 4)},
