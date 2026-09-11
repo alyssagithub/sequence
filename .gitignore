@@ -1,0 +1,5 @@
+place/
+*.rbxm
+*.rbxl
+*.rbxl.lock
+*.log
