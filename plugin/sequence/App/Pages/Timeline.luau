@@ -779,16 +779,14 @@ return function()
 					end
 				end,
 
-				Vide.values(function()
+				Vide.indexes(function()
 					return Clip.KeyTimes(Session.Current())
-				end, function(Time: number)
+				end, function(Time)
 					return Diamond {
-						Time = function()
-							return Time
-						end,
+						Time = Time,
 						Selected = function()
 							for _, Ref in Session.SelectedKeys() do
-								if math.abs(Ref.Time - Time) < 0.0005 then
+								if math.abs(Ref.Time - Time()) < 0.0005 then
 									return true
 								end
 							end
@@ -796,12 +794,12 @@ return function()
 							return false
 						end,
 						OnDown = function(Shift: boolean)
-							Session.SelectColumn(Time, Shift)
-							Session.Seek(Time)
-							StartDrag("Keys", XOf(Time) + LaneLeft())
+							Session.SelectColumn(Time(), Shift)
+							Session.Seek(Time())
+							StartDrag("Keys", XOf(Time()) + LaneLeft())
 						end,
 						OnMenu = function(Position: Vector2)
-							Session.SelectColumn(Time, false)
+							Session.SelectColumn(Time(), false)
 
 							const First = Session.SelectedKeys()[1]
 

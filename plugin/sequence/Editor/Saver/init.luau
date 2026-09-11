@@ -30,7 +30,7 @@ const function WritePose(Current: Clip.Clip, Joint: Rig.Joint, Time: number, Par
 	Written.Name = Joint.Name
 	Written.Weight = if Key then 1 else 0
 	Written.CFrame = if Key then Key.Value else CFrame.identity
-	Written.EasingStyle = if Key then (Enum.PoseEasingStyle :: any)[Key.EasingStyle] else Enum.PoseEasingStyle.Linear
+	Written.EasingStyle = if not Key then Enum.PoseEasingStyle.Linear elseif Key.EasingStyle == "Cubic" then Enum.PoseEasingStyle.CubicV2 else (Enum.PoseEasingStyle :: any)[Key.EasingStyle]
 	Written.EasingDirection = if Key then (Enum.PoseEasingDirection :: any)[Key.EasingDirection] else Enum.PoseEasingDirection.In
 	Written.Parent = Parent
 
@@ -110,11 +110,14 @@ const function ReadPose(Current: Clip.Clip, Read: Pose, Time: number): Clip.Clip
 	local Edited = Current
 
 	if Read.Weight > 0 then
+		const LegacyCubic = Read.EasingStyle == Enum.PoseEasingStyle.Cubic
+		const Swapped = if Read.EasingDirection == Enum.PoseEasingDirection.In then "Out" elseif Read.EasingDirection == Enum.PoseEasingDirection.Out then "In" else "InOut"
+
 		Edited = Clip.SetKey(Edited, Read.Name, {
 			Time = Time,
 			Value = Read.CFrame,
 			EasingStyle = if Read.EasingStyle == Enum.PoseEasingStyle.CubicV2 then "Cubic" else Read.EasingStyle.Name :: any,
-			EasingDirection = Read.EasingDirection.Name :: any,
+			EasingDirection = if LegacyCubic then Swapped else Read.EasingDirection.Name :: any,
 		})
 	end
 

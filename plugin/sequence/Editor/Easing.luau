@@ -66,7 +66,7 @@ function Easing.Apply(Alpha: number, Style: Style, Direction: Direction): number
 	end
 
 	if Style == "Constant" then
-		return if Alpha >= 1 then 1 else 0
+		return if Alpha > 0 then 1 else 0
 	end
 
 	const In = Ins[Style]
@@ -77,6 +77,24 @@ function Easing.Apply(Alpha: number, Style: Style, Direction: Direction): number
 
 	if Direction == "Out" then
 		return 1 - In(1 - Alpha)
+	end
+
+	if Style == "Bounce" then
+		return if Alpha < 0.5 then In(Alpha * 2) / 2 else 0.5 + In(Alpha * 2 - 1) / 2
+	end
+
+	if Style == "Elastic" then
+		if Alpha == 0 or Alpha == 1 then
+			return Alpha
+		end
+
+		const Doubled = Alpha * 2
+
+		if Doubled < 1 then
+			return -0.5 * 2 ^ (10 * (Doubled - 1)) * math.sin((Doubled - 1.1125) * (2 * math.pi) / 0.45)
+		end
+
+		return 2 ^ (-10 * (Doubled - 1)) * math.sin((Doubled - 1.1125) * (2 * math.pi) / 0.45) * 0.5 + 1
 	end
 
 	if Alpha < 0.5 then
