@@ -5,7 +5,7 @@ An animation plugin for Roblox Studio.
 ## Layout
 
 ```
-plugin/Sequence/
+plugin/sequence/
   Plugin.legacy.luau     bootstrap: loads settings, mounts the app, tears it down on unload
   Config.luau            name, version, widget id, icon font
   Settings.luau          plugin settings as vide sources, saved through plugin:SetSetting
@@ -29,7 +29,7 @@ plugin/Sequence/
 
 Open `place/sequence.rbxl`. It began life as a copy of Claudio's place, so on first open delete
 `ServerStorage.Claudio` and point Script Sync at this repo's `plugin/` instead; after that,
-`ServerStorage.Sequence` mirrors the folder. The place file is not tracked by git. Edits on disk land in the place and edits in the place land on disk. Do not create instances under `ServerStorage.Sequence` at runtime and expect them to survive: the sync only keeps what came from disk.
+`ServerStorage.sequence` mirrors the folder. The place file is not tracked by git. Edits on disk land in the place and edits in the place land on disk. Do not create instances under `ServerStorage.sequence` at runtime and expect them to survive: the sync only keeps what came from disk.
 
 Every script follows the shared Roblox ruleset in the vault. The short version: PascalCase everywhere, `const` for every immutable local and local function, guard clauses, no comments, no trailing newline, no speculative API, string interpolation over concatenation, and vide `create()` for UI.
 
@@ -58,4 +58,4 @@ The mount destroys the bootstrap script, so anything that only the installed plu
 
 ## Installing for real
 
-Export `ServerStorage.Sequence` as `Sequence.rbxm` into the Studio plugins folder and reload plugins. Studio reads that folder at launch and on reload, not when the file changes.
+Export `ServerStorage.sequence` as `Sequence.rbxm` into the Studio plugins folder and reload plugins. Studio reads that folder at launch and on reload, not when the file changes.

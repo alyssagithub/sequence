@@ -61,7 +61,7 @@ function Testing.Leftovers(): string
 				continue
 			end
 
-			if Child.Name:match("^Sequence") and not Ours(Child) then
+			if Child.Name:match("^sequence") and not Ours(Child) then
 				table.insert(Found, Child:GetFullName())
 			end
 
