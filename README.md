@@ -99,6 +99,15 @@ const Testing = require(game:GetService("ServerStorage").Sequence.Testing)
 Testing.Mount(plugin)       -- clone the source beside itself and open it in a test widget
 Testing.Show("MainPage", 960, 420)   -- stage a clone of that element on a SurfaceGui the viewport can photograph, at an optional width and height
 Testing.Show("MainPage", 960, 420, true)   -- stage a live mount instead, for anything that lays itself out from its own size
+```
+
+The stage is for layout at a size of your choosing. The viewport runs it through Roblox's tone curve, so
+colours come out darker than they are; when colour matters, capture the Studio window itself, which
+includes the dock widget as the user sees it:
+
+```bash
+python tools/capture_studio.py out.png            # the whole window
+python tools/capture_studio.py out.png 12 640 1604 792   # cropped to left top right bottom
 Testing.Hide()              -- clear the stage and put the camera back
 Testing.Paint("Light")      -- repaint the mount as the other theme without changing Studio
 Testing.Colours()           -- every colour drawn, counted, so hardcoded ones stand out
