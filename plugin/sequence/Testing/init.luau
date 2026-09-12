@@ -170,6 +170,7 @@ function Testing.Mount(CurrentPlugin: Plugin): string
 		Stub.Parent = Copy.App
 	end
 
+	Copy.Config.Source = Copy.Config.Source:gsub('Name = "sequence"', 'Name = "sequenceTesting"')
 	Copy.Parent = Home
 	State().Mount = Copy
 
