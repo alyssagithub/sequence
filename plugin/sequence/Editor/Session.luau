@@ -50,6 +50,7 @@ const Session = {
 	UndoCount = Vide.source(0),
 	RedoCount = Vide.source(0),
 	ImportPrompt = Vide.source(false),
+	InsertPrompt = Vide.source(false),
 	SelectedMarker = Vide.source(nil :: Clip.Marker?),
 	Confirming = Vide.source(nil :: string?),
 	Collapsed = Vide.source({} :: {[string]: boolean}),

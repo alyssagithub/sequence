@@ -8,7 +8,7 @@ const Create = Vide.create
 type Props = {
 	Value: () -> string,
 	OnChange: (string) -> (),
-	Placeholder: string?,
+	Placeholder: (string | () -> string)?,
 	Width: (number | () -> number)?,
 	Size: UDim2?,
 	LayoutOrder: number?,

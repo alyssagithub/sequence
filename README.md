@@ -27,6 +27,7 @@ plugin/sequence/
     Reference.luau       images, image sequences and videos loaded as references
     Playtest/            the reel driven runner that plays the clip on your character without uploading
     Bake.luau            frozen posed copies of the rig
+    Inserter.luau        R6, R15, Rthro dummies, your avatar, or any player by name, placed in front of the camera
     ClipSchema.luau      typed schema used when reading an animation back in
     EmoteRigData.fragment.xml   an AnimationRigData for R15, taken from a published emote; plugins cannot build one
   App/
@@ -47,7 +48,8 @@ tools/build_rbxmx.py     builds plugin/ into an rbxmx that the Studio bridge can
 
 ## What it does
 
-Pick one or more models with Motor6D or AnimationConstraint joints and every joint becomes a track,
+The rig button loads the selected models or inserts a new one: an R15, R6 or Rthro dummy, your own
+avatar, or any player by username or id. Every Motor6D or AnimationConstraint joint becomes a track,
 grouped under its rig. Move a part with Studio's own Move and Rotate tools, with the gizmo on the
 selected joint, or with the pose tool that lets you click and drag parts straight in the viewport,
 and a keyframe lands at the playhead. Turn auto key off to pose freely and press K to keep it.
