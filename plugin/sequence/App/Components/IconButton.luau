@@ -57,7 +57,7 @@ return function(Props: Props)
 		MouseEnter = function()
 			Hovered(true)
 
-			if Anchor and Props.Tooltip then
+			if Anchor and Props.Tooltip and not Off() then
 				Overlay.ShowTip(Vide.read(Props.Tooltip), Anchor)
 			end
 		end,
@@ -84,7 +84,7 @@ return function(Props: Props)
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Colour = function()
 				if Off() then
-					return Theme.Colors.Border()
+					return Theme.Colors.DimText():Lerp(Theme.Colors.Panel(), 0.6)
 				end
 
 				if Props.Active and Props.Active() then
