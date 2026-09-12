@@ -45,9 +45,9 @@ return function()
 				Pieces.Rail,
 				Create "Frame" {
 					Name = "RailEdge",
-					Size = UDim2.new(0, 2, 1, 0),
+					Size = UDim2.new(0, 1, 1, 0),
 					BackgroundColor3 = Theme.Colors.DimText,
-					BackgroundTransparency = 0.55,
+					BackgroundTransparency = 0.6,
 					LayoutOrder = 0.5,
 				},
 				Create "Frame" {
