@@ -45,7 +45,7 @@ function Overlay.MenuAt(Position: Vector2, Entries: {Entry}, Width: number?)
 end
 
 function Overlay.ShowTip(Text: string, Anchor: GuiObject)
-	const Current = Overlay.Tip()
+	const Current = Vide.untrack(Overlay.Tip)
 
 	if Current and Current.Anchor == Anchor and Current.Text == Text then
 		return
@@ -55,7 +55,7 @@ function Overlay.ShowTip(Text: string, Anchor: GuiObject)
 end
 
 function Overlay.HideTip(Anchor: GuiObject)
-	const Current = Overlay.Tip()
+	const Current = Vide.untrack(Overlay.Tip)
 
 	if Current and Current.Anchor == Anchor then
 		Overlay.Tip(nil)
