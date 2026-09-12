@@ -30,7 +30,7 @@ end
 const function Strip(Name: string, Order: number, Visible: () -> boolean, ...: Instance)
 	return Create "Frame" {
 		Name = Name,
-		Size = UDim2.new(1, 0, 0, 30),
+		Size = UDim2.new(1, 0, 0, 24),
 		BackgroundTransparency = 1,
 		LayoutOrder = Order,
 		Visible = Visible,
@@ -131,7 +131,7 @@ return function()
 
 	return Create "Frame" {
 		Name = "Inspector",
-		Size = UDim2.new(1, 0, 0, 40),
+		Size = UDim2.new(1, 0, 0, 24),
 		BackgroundColor3 = Theme.Colors.Panel,
 
 		Create "UIPadding" {

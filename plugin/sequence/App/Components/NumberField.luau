@@ -29,7 +29,7 @@ return function(Props: Props)
 	return Create "Frame" {
 		Name = "NumberField",
 		Size = function()
-			return UDim2.fromOffset(Props.Width or 64, Settings.TextSize() + 10)
+			return UDim2.fromOffset(Props.Width or 64, Settings.TextSize() + 6)
 		end,
 		BackgroundColor3 = Theme.Colors.Input,
 		LayoutOrder = Props.LayoutOrder,

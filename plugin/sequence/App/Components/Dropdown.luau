@@ -27,7 +27,7 @@ return function(Props: Props)
 	return Create "TextButton" {
 		Name = "Dropdown",
 		Size = function()
-			return UDim2.fromOffset(Props.Width or 110, Settings.TextSize() + 10)
+			return UDim2.fromOffset(Props.Width or 110, Settings.TextSize() + 6)
 		end,
 		BackgroundColor3 = Theme.Colors.Input,
 		Text = "",

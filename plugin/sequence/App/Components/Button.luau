@@ -57,8 +57,8 @@ return function(Props: Props)
 		Create "UIPadding" {
 			PaddingLeft = UDim.new(0, 10),
 			PaddingRight = UDim.new(0, 10),
-			PaddingTop = UDim.new(0, 5),
-			PaddingBottom = UDim.new(0, 5),
+			PaddingTop = UDim.new(0, 3),
+			PaddingBottom = UDim.new(0, 3),
 		},
 		Create "UIListLayout" {
 			FillDirection = Enum.FillDirection.Horizontal,

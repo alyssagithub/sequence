@@ -48,7 +48,7 @@ return function()
 	local Drag: Drag?
 
 	const function RowHeight(): number
-		return Settings.TextSize() + 9
+		return Settings.TextSize() + 5
 	end
 
 	const function LaneLeft(): number
@@ -835,7 +835,7 @@ return function()
 	const function Header()
 		return Create "Frame" {
 			Name = "Header",
-			Size = UDim2.new(1, 0, 0, 24),
+			Size = UDim2.new(1, 0, 0, 18),
 			BackgroundColor3 = Theme.Colors.Panel,
 			LayoutOrder = 1,
 
@@ -933,7 +933,7 @@ return function()
 						BackgroundColor3 = Theme.Colors.DimText,
 
 						Create "TextLabel" {
-							Position = UDim2.fromOffset(3, -13),
+							Position = UDim2.fromOffset(3, -10),
 							AutomaticSize = Enum.AutomaticSize.XY,
 							BackgroundTransparency = 1,
 							TextColor3 = Theme.Colors.DimText,
@@ -975,9 +975,12 @@ return function()
 	const function Events()
 		return Create "Frame" {
 			Name = "Events",
-			Size = UDim2.new(1, 0, 0, 20),
+			Size = UDim2.new(1, 0, 0, 16),
 			BackgroundColor3 = Theme.Colors.Background,
 			LayoutOrder = 2,
+			Visible = function()
+				return #Session.Current().Markers > 0 or Session.SelectedMarker() ~= nil
+			end,
 
 			Create "UIListLayout" {
 				FillDirection = Enum.FillDirection.Horizontal,

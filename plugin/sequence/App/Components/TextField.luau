@@ -26,7 +26,7 @@ return function(Props: Props)
 				return Props.Size
 			end
 
-			return UDim2.fromOffset(if Props.Width then Vide.read(Props.Width) else 140, Settings.TextSize() + 10)
+			return UDim2.fromOffset(if Props.Width then Vide.read(Props.Width) else 140, Settings.TextSize() + 6)
 		end,
 		BackgroundColor3 = Theme.Colors.Input,
 		LayoutOrder = Props.LayoutOrder,

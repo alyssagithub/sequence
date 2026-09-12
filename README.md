@@ -38,7 +38,7 @@ plugin/sequence/
     Overlay.luau         the popup layer that menus and dropdowns open into
     Hotkeys.luau         keyboard shortcuts while the widget has the mouse
     Components/          Button, IconButton, Icon, Toggle, Dropdown, NumberField, TextField
-    Pages/               Main, TopBar, Transport, Timeline, CurveView, Inspector, ReferencePanel, EmotePanel, InsertWindow
+    Pages/               Main, Header, Timeline, CurveView, Inspector, ReferencePanel, EmotePanel, InsertWindow
   Packages/
     vide, sift, typed, reel, lucide-icons   thin modules that require into _Index, the layout Loom writes
     _Index/                                 one folder per package at its pinned version, vendor code, never edited

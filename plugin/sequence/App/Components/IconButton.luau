@@ -35,7 +35,7 @@ return function(Props: Props)
 	return Create "TextButton" {
 		Name = "IconButton",
 		Size = function()
-			return UDim2.fromOffset(Room() + 12, Room() + 8)
+			return UDim2.fromOffset(Room() + 10, Room() + 6)
 		end,
 		BackgroundColor3 = Theme.Colors.Button,
 		BackgroundTransparency = function()
