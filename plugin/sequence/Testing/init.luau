@@ -1,7 +1,6 @@
 --!strict
 const PluginGuiService = game:GetService("PluginGuiService")
 const RunService = game:GetService("RunService")
-const Lighting = game:GetService("Lighting")
 
 export type Progress = {
 	Mount: Instance?,
@@ -193,24 +192,6 @@ function Testing.Hide(): string
 		Staged:Destroy()
 	end
 
-	const Dimmed = _G.SequenceShotLighting :: any
-
-	if Dimmed then
-		for Name, Value in Dimmed.Properties do
-			(Lighting :: any)[Name] = Value
-		end
-
-		for _, Held in Dimmed.Effects do
-			if Held.Parent then
-				Held.Object.Parent = Held.Parent
-			else
-				Held.Object.Enabled = Held.Enabled
-			end
-		end
-
-		_G.SequenceShotLighting = nil
-	end
-
 	const Saved = _G.SequenceShotCamera :: {CFrame: CFrame, FieldOfView: number}?
 
 	if not Saved then
@@ -256,43 +237,6 @@ function Testing.Show(Name: string?, Wanted: number?, WantedHeight: number?, Liv
 	const Camera = workspace.CurrentCamera
 
 	_G.SequenceShotCamera = {CFrame = Camera.CFrame, FieldOfView = Camera.FieldOfView}
-
-	const Effects = {}
-
-	for _, Object in Lighting:GetDescendants() do
-		if Object:IsA("Atmosphere") then
-			table.insert(Effects, {Object = Object, Parent = Object.Parent})
-		elseif Object:IsA("PostEffect") then
-			table.insert(Effects, {Object = Object, Enabled = Object.Enabled})
-		end
-	end
-
-	_G.SequenceShotLighting = {
-		Properties = {
-			Ambient = Lighting.Ambient,
-			OutdoorAmbient = Lighting.OutdoorAmbient,
-			Brightness = Lighting.Brightness,
-			FogEnd = Lighting.FogEnd,
-			ExposureCompensation = Lighting.ExposureCompensation,
-			GlobalShadows = Lighting.GlobalShadows,
-		},
-		Effects = Effects,
-	}
-
-	for _, Held in Effects do
-		if Held.Parent then
-			Held.Object.Parent = nil
-		else
-			Held.Object.Enabled = false
-		end
-	end
-
-	Lighting.Ambient = Color3.new()
-	Lighting.OutdoorAmbient = Color3.new()
-	Lighting.Brightness = 0
-	Lighting.FogEnd = 1e6
-	Lighting.ExposureCompensation = 0
-	Lighting.GlobalShadows = false
 
 	const Pixels = 100
 	const Width = Wanted or Shown.AbsoluteSize.X
