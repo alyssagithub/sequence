@@ -40,8 +40,9 @@ plugin/sequence/
     Components/          Button, IconButton, Icon, Toggle, Dropdown, NumberField, TextField
     Pages/               Main, Header, Timeline, CurveView, Inspector, ReferencePanel, EmotePanel, InsertWindow
   Packages/
-    vide, sift, typed, reel, lucide-icons   thin modules that require into _Index, the layout Loom writes
+    vide, sift, typed, reel, lucide-icons, scythe, vow, testez   thin modules that require into _Index, the layout Loom writes
     _Index/                                 one folder per package at its pinned version, vendor code, never edited
+  Tests/                 TestEZ specs for the pure modules: Clip, Easing, Pose, the Saver round trips
   Testing/               the harness below
 tools/build_rbxmx.py     builds plugin/ into an rbxmx that the Studio bridge can load, without Rojo
 ```
@@ -112,6 +113,7 @@ Testing.Paint("Light")      -- repaint the mount as the other theme without chan
 Testing.Colours()           -- every colour drawn, counted, so hardcoded ones stand out
 Testing.With({TextSize = 10}, function() end)
 Testing.Leftovers()         -- anything the mount left in the place
+Testing.RunTests()          -- run every spec under Tests against the mounted copy
 Testing.Unmount()
 ```
 

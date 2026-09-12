@@ -1,21 +1,18 @@
 --!strict
 const CoreGui = game:GetService("CoreGui")
 const Vide = require(script.Parent.Parent.Packages.vide)
+const Scythe = require(script.Parent.Parent.Packages.scythe)
 const Session = require(script.Parent.Session)
 const Rig = require(script.Parent.Rig)
 
 const Gizmo = {}
 
 local Holder: Folder?
-local Connections: {RBXScriptConnection} = {}
+const Scope = Scythe.scope()
 local DestroyScope: (() -> ())?
 
 const function Clear()
-	for _, Connection in Connections do
-		Connection:Disconnect()
-	end
-
-	table.clear(Connections)
+	Scythe.clean(Scope)
 
 	if DestroyScope then
 		DestroyScope()
@@ -68,17 +65,17 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 		[Enum.Axis.Z] = Vector3.zAxis,
 	}
 
-	table.insert(Connections, Arcs.MouseButton1Down:Connect(Begin))
-	table.insert(Connections, Arcs.MouseButton1Up:Connect(Finish))
-	table.insert(Connections, Arcs.MouseDrag:Connect(function(Axis: Enum.Axis, Angle: number)
+	Scythe.add(Scope, Arcs.MouseButton1Down:Connect(Begin))
+	Scythe.add(Scope, Arcs.MouseButton1Up:Connect(Finish))
+	Scythe.add(Scope, Arcs.MouseDrag:Connect(function(Axis: Enum.Axis, Angle: number)
 		const Snapped = if Session.Snap() ~= "Off" then math.rad(math.round(math.deg(Angle) / 5) * 5) else Angle
 
 		Session.SetJointTransform(Joint.Name, StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped), `Rotate {Joint.Name}`)
 		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped)
 	end))
-	table.insert(Connections, Movers.MouseButton1Down:Connect(Begin))
-	table.insert(Connections, Movers.MouseButton1Up:Connect(Finish))
-	table.insert(Connections, Movers.MouseDrag:Connect(function(Face: Enum.NormalId, Distance: number)
+	Scythe.add(Scope, Movers.MouseButton1Down:Connect(Begin))
+	Scythe.add(Scope, Movers.MouseButton1Up:Connect(Finish))
+	Scythe.add(Scope, Movers.MouseDrag:Connect(function(Face: Enum.NormalId, Distance: number)
 		const Snapped = if Session.Snap() ~= "Off" then math.round(Distance * 4) / 4 else Distance
 
 		Session.SetJointTransform(Joint.Name, StartTransform * CFrame.new(Vector3.fromNormalId(Face) * Snapped), `Move {Joint.Name}`)
@@ -97,7 +94,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 		Place()
 	end)
 
-	table.insert(Connections, Joint.Part0:GetPropertyChangedSignal("CFrame"):Connect(Place))
+	Scythe.add(Scope, Joint.Part0:GetPropertyChangedSignal("CFrame"):Connect(Place))
 end
 
 function Gizmo.Start()

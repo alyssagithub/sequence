@@ -4,6 +4,7 @@ const StudioService = game:GetService("StudioService")
 const ChangeHistoryService = game:GetService("ChangeHistoryService")
 const Selection = game:GetService("Selection")
 const Vide = require(script.Parent.Parent.Packages.vide)
+const Vow = require(script.Parent.Parent.Packages.vow)
 const Rig = require(script.Parent.Rig)
 
 export type Body = "Original" | "R6" | "R15"
@@ -278,6 +279,36 @@ function Inserter.BuildAccount(): (Model?, string?)
 	Clean(Model)
 
 	return Model, nil
+end
+
+function Inserter.BuildPreview(): Vow.Vow
+	return Vow.new(function(Pending: Vow.Vow)
+		task.spawn(function()
+			const Problem = Inserter.Resolve(Inserter.Account())
+
+			if Problem then
+				Vow.reject(Pending, Problem)
+
+				return
+			end
+
+			const Model, Failed = Inserter.BuildAccount()
+
+			if not Vow.isAlive(Pending) then
+				if Model then
+					Model:Destroy()
+				end
+
+				return
+			end
+
+			if Model then
+				Vow.resolve(Pending, Model)
+			else
+				Vow.reject(Pending, Failed or "Could not build the character")
+			end
+		end)
+	end)
 end
 
 Inserter.Presets = {} :: {Preset}

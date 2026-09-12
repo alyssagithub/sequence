@@ -5,6 +5,7 @@ const UserInputService = game:GetService("UserInputService")
 const ChangeHistoryService = game:GetService("ChangeHistoryService")
 const Vide = require(script.Parent.Parent.Packages.vide)
 const Sift = require(script.Parent.Parent.Packages.sift)
+const Scythe = require(script.Parent.Parent.Packages.scythe)
 const Settings = require(script.Parent.Parent.Settings)
 const Clip = require(script.Parent.Clip)
 const Rig = require(script.Parent.Rig)
@@ -21,7 +22,7 @@ export type Entry = {
 	Model: Model,
 	Loaded: Rig.Rig,
 	Clip: Clip.Clip,
-	Connections: {RBXScriptConnection},
+	Scope: Scythe.Scope,
 }
 
 type Snapshot = {
@@ -66,9 +67,7 @@ const Undo: {Snapshot} = {}
 const Redo: {Snapshot} = {}
 local LastMergeKey: string?
 local Heartbeat: RBXScriptConnection?
-local SelectionConnection: RBXScriptConnection?
-local ReleaseConnection: RBXScriptConnection?
-local HistoryConnections: {RBXScriptConnection} = {}
+const SessionScope = Scythe.scope()
 local NoticeToken = 0
 local ConfirmToken = 0
 local Applying = false
@@ -995,7 +994,7 @@ const function Watch(Entry: Entry)
 	const Loaded = Entry.Loaded
 
 	for _, Joint in Loaded.Joints do
-		table.insert(Entry.Connections, Joint.Part1:GetPropertyChangedSignal("CFrame"):Connect(function()
+		Scythe.add(Entry.Scope, Joint.Part1:GetPropertyChangedSignal("CFrame"):Connect(function()
 			if Applying or Loaded.Applying or Session.Playing() or not Joint.Part1.Parent then
 				return
 			end
@@ -1035,7 +1034,7 @@ const function Watch(Entry: Entry)
 		end))
 	end
 
-	table.insert(Entry.Connections, Entry.Model.AncestryChanged:Connect(function()
+	Scythe.add(Entry.Scope, Entry.Model.AncestryChanged:Connect(function()
 		if Entry.Model:IsDescendantOf(workspace) then
 			return
 		end
@@ -1092,7 +1091,7 @@ function Session.LoadRig(Model: Model): boolean
 		Model = Model,
 		Loaded = Loaded,
 		Clip = Parked[Model] or Clip.New("Animation"),
-		Connections = {},
+		Scope = Scythe.scope(),
 	}
 
 	Parked[Model] = nil
@@ -1134,10 +1133,7 @@ function Session.RemoveRig(Model: Model, Keep: boolean?)
 		Parked[Model] = if Active and Active.Model == Model then Session.Current() else Target.Clip
 	end
 
-	for _, Connection in Target.Connections do
-		Connection:Disconnect()
-	end
-
+	Scythe.destroy(Target.Scope)
 	Rig.Release(Target.Loaded)
 
 	const Remaining = Sift.Array.filter(Session.Rigs(), function(Found: Entry)
@@ -1223,28 +1219,28 @@ function Session.Start(CurrentPlugin: Plugin)
 		Session.Problems(Emote.Check(Session.Current(), Loaded, Session.FrameRate()))
 	end)
 
-	ReleaseConnection = UserInputService.InputEnded:Connect(function(Input: InputObject)
+	Scythe.add(SessionScope, UserInputService.InputEnded:Connect(function(Input: InputObject)
 		if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 			LastMergeKey = nil
 			Session.RefreshPins()
 		end
-	end)
+	end))
 
-	table.insert(HistoryConnections, UserInputService.InputBegan:Connect(function(Input: InputObject)
+	Scythe.add(SessionScope, UserInputService.InputBegan:Connect(function(Input: InputObject)
 		if Input.UserInputType == Enum.UserInputType.Keyboard then
 			LastKeyboard = os.clock()
 		end
 	end))
 
 	for _, Signal in {ChangeHistoryService.OnUndo, ChangeHistoryService.OnRedo} do
-		table.insert(HistoryConnections, Signal:Connect(function()
+		Scythe.add(SessionScope, Signal:Connect(function()
 			if #Session.Rigs() > 0 then
 				task.defer(ApplyAll)
 			end
 		end))
 	end
 
-	SelectionConnection = Selection.SelectionChanged:Connect(function()
+	Scythe.add(SessionScope, Selection.SelectionChanged:Connect(function()
 		const Picked = Selection:Get()[1]
 
 		if not Picked then
@@ -1284,27 +1280,13 @@ function Session.Start(CurrentPlugin: Plugin)
 		end
 
 		Session.Offer(Model)
-	end)
+	end))
 end
 
 function Session.Destroy()
 	Session.ReleaseAll()
 
-	for _, Connection in HistoryConnections do
-		Connection:Disconnect()
-	end
-
-	table.clear(HistoryConnections)
-
-	if SelectionConnection then
-		SelectionConnection:Disconnect()
-		SelectionConnection = nil
-	end
-
-	if ReleaseConnection then
-		ReleaseConnection:Disconnect()
-		ReleaseConnection = nil
-	end
+	Scythe.clean(SessionScope)
 end
 
 return Session

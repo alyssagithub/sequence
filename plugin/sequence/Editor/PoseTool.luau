@@ -1,6 +1,7 @@
 --!strict
 const UserInputService = game:GetService("UserInputService")
 const Vide = require(script.Parent.Parent.Packages.vide)
+const Scythe = require(script.Parent.Parent.Packages.scythe)
 const Session = require(script.Parent.Session)
 const Rig = require(script.Parent.Rig)
 
@@ -8,14 +9,10 @@ const PoseTool = {
 	Active = Vide.source(false),
 }
 
-local Connections: {RBXScriptConnection} = {}
+const Scope = Scythe.scope()
 
 const function Clear()
-	for _, Connection in Connections do
-		Connection:Disconnect()
-	end
-
-	table.clear(Connections)
+	Scythe.clean(Scope)
 end
 
 function PoseTool.Toggle()
@@ -39,7 +36,7 @@ function PoseTool.Toggle()
 	const Made = Plugin:GetMouse()
 	local Dragging: {Joint: Rig.Joint, Start: CFrame, Origin: Vector2, Mode: "Rotate" | "Move"}?
 
-	table.insert(Connections, Made.Button1Down:Connect(function()
+	Scythe.add(Scope, Made.Button1Down:Connect(function()
 		const Target = Made.Target
 
 		if not Target then
@@ -71,7 +68,7 @@ function PoseTool.Toggle()
 		end
 	end))
 
-	table.insert(Connections, Made.Move:Connect(function()
+	Scythe.add(Scope, Made.Move:Connect(function()
 		const Active = Dragging
 
 		if not Active then
@@ -108,18 +105,18 @@ function PoseTool.Toggle()
 		Session.SetJointTransform(Joint.Name, Turn * Active.Start.Rotation + Active.Start.Position, `Pose {Joint.Name}`)
 	end))
 
-	table.insert(Connections, Made.Button1Up:Connect(function()
+	Scythe.add(Scope, Made.Button1Up:Connect(function()
 		Dragging = nil
 		Session.EndMerge()
 		Session.RefreshPins()
 	end))
 
-	table.insert(Connections, Plugin.Deactivation:Connect(function()
+	Scythe.add(Scope, Plugin.Deactivation:Connect(function()
 		PoseTool.Active(false)
 		Clear()
 	end))
 
-	table.insert(Connections, UserInputService.InputBegan:Connect(function(Input: InputObject, Processed: boolean)
+	Scythe.add(Scope, UserInputService.InputBegan:Connect(function(Input: InputObject, Processed: boolean)
 		if not Processed and Input.KeyCode == Enum.KeyCode.Escape then
 			PoseTool.Toggle()
 		end

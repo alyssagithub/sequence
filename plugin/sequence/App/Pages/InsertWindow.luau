@@ -4,6 +4,7 @@ const Settings = require(script.Parent.Parent.Parent.Settings)
 const Theme = require(script.Parent.Parent.Theme)
 const Session = require(script.Parent.Parent.Parent.Editor.Session)
 const Inserter = require(script.Parent.Parent.Parent.Editor.Inserter)
+const Vow = require(script.Parent.Parent.Parent.Packages.vow)
 const Button = require(script.Parent.Parent.Components.Button)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
 const TextField = require(script.Parent.Parent.Components.TextField)
@@ -112,43 +113,49 @@ end
 return function(Props: {Close: () -> ()})
 	const Tab = Vide.source("Account" :: Tab)
 	const Turn = Vide.source(0)
-	const ResolveToken = {Value = 0}
+	local Pending: {Vow.Vow}?
+
+	const function Release()
+		if not Pending then
+			return
+		end
+
+		for _, Handle in Pending do
+			if Vow.isAlive(Handle) then
+				Vow.destroy(Handle)
+			end
+		end
+
+		Pending = nil
+	end
+
+	const function Settle(Model: Model?, Failed: string?)
+		const Old = Inserter.Preview()
+
+		if Old then
+			Old:Destroy()
+		end
+
+		Inserter.Preview(Model)
+		Inserter.Notice(Failed or "")
+		Inserter.Building(false)
+		task.defer(Release)
+	end
 
 	const function Rebuild()
-		ResolveToken.Value += 1
-
-		const Token = ResolveToken.Value
-
+		Release()
 		Inserter.Building(true)
 
-		task.spawn(function()
-			const Problem = Inserter.Resolve(Inserter.Account())
-			local Model: Model?
-			local Failed = Problem
+		const Started = Inserter.BuildPreview()
 
-			if not Problem then
-				Model, Failed = Inserter.BuildAccount()
-			end
-
-			if Token ~= ResolveToken.Value then
-				if Model then
-					Model:Destroy()
-				end
-
-				return
-			end
-
-			const Old = Inserter.Preview()
-
-			if Old then
-				Old:Destroy()
-			end
-
-			Inserter.Preview(Model)
-			Inserter.Notice(Failed or "")
-			Inserter.Building(false)
-		end)
+		Pending = {Started, Vow.andThen(Started, function(Model: Model)
+			Settle(Model, nil)
+		end, function(Failed: string)
+			Settle(nil, Failed)
+		end)}
 	end
+
+	Vide.cleanup(Release)
 
 	if not Inserter.Preview() then
 		Rebuild()
