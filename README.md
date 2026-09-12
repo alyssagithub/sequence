@@ -104,7 +104,10 @@ Testing.Show("MainPage", 960, 420, true)   -- stage a live mount instead, for an
 The stage is for layout at a size of your choosing. The viewport runs it through Roblox's tone curve, so
 colours come out darker than they are; when colour matters, capture the Studio window through the
 Claudio bridge (`capture` with `of: window`, cropped to the dock with x, y, width and height), which
-shows the widget as the user sees it and can save the PNG to a file.ting.Hide()              -- clear the stage and put the camera back
+shows the widget as the user sees it and can save the PNG to a file.
+
+```lua
+Testing.Hide()              -- clear the stage and put the camera back
 Testing.Paint("Light")      -- repaint the mount as the other theme without changing Studio
 Testing.Colours()           -- every colour drawn, counted, so hardcoded ones stand out
 Testing.With({TextSize = 10}, function() end)
