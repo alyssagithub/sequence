@@ -9,7 +9,6 @@ const Session = require(script.Parent.Parent.Parent.Editor.Session)
 const Saver = require(script.Parent.Parent.Parent.Editor.Saver)
 const Clip = require(script.Parent.Parent.Parent.Editor.Clip)
 const Rig = require(script.Parent.Parent.Parent.Editor.Rig)
-const Inserter = require(script.Parent.Parent.Parent.Editor.Inserter)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
 const TextField = require(script.Parent.Parent.Components.TextField)
 const Icon = require(script.Parent.Parent.Components.Icon)
@@ -30,28 +29,8 @@ const function PickRigs(): string?
 	return if Added > 0 then nil else "Select a model with Motor6D or AnimationConstraint joints first"
 end
 
-const function Insert(Make: () -> (Model?, string?))
-	task.spawn(function()
-		Session.Say("Building the character...")
-
-		const Model, Problem = Make()
-
-		if not Model then
-			Session.Say(Problem or "Could not insert that")
-
-			return
-		end
-
-		if Session.LoadRig(Model) then
-			Session.Say(`{Model.Name} is in the scene and loaded`)
-		else
-			Session.Say(`{Model.Name} was inserted but has no joints to animate`)
-		end
-	end)
-end
-
 const function InsertMenu(Anchor: GuiObject)
-	const Entries: {Overlay.Entry} = {
+	Overlay.Menu(Anchor, {
 		{
 			Label = "Load the selected models",
 			Action = function()
@@ -62,41 +41,13 @@ const function InsertMenu(Anchor: GuiObject)
 				end
 			end,
 		},
-		{Label = "", Divider = true},
 		{
-			Label = "Insert R15 dummy",
+			Label = "Insert a character...",
 			Action = function()
-				Insert(Inserter.R15)
+				Session.Panel("Insert")
 			end,
 		},
-		{
-			Label = "Insert R6 dummy",
-			Action = function()
-				Insert(Inserter.R6)
-			end,
-		},
-		{
-			Label = "Insert Rthro dummy",
-			Action = function()
-				Insert(Inserter.Rthro)
-			end,
-		},
-		{
-			Label = "Insert my avatar",
-			Action = function()
-				Insert(Inserter.Me)
-			end,
-		},
-		{
-			Label = "Insert a player by username or id",
-			Action = function()
-				Session.Say("Type the username or user id into the name box and press Enter")
-				Session.InsertPrompt(true)
-			end,
-		},
-	}
-
-	Overlay.Menu(Anchor, Entries, 260)
+	} :: {Overlay.Entry}, 220)
 end
 
 const function LoadInto(Source: Instance)
@@ -326,13 +277,9 @@ return function()
 		},
 		TextField {
 			Value = function()
-				return if Session.ImportPrompt() or Session.InsertPrompt() then "" else Session.Current().Name
+				return if Session.ImportPrompt() then "" else Session.Current().Name
 			end,
 			Placeholder = function()
-				if Session.InsertPrompt() then
-					return "Username or user id"
-				end
-
 				return if Session.ImportPrompt() then "Asset id" else "Animation name"
 			end,
 			Width = 170,
@@ -340,18 +287,8 @@ return function()
 			LayoutOrder = 2,
 			OnBlur = function()
 				Session.ImportPrompt(false)
-				Session.InsertPrompt(false)
 			end,
 			OnChange = function(Text: string)
-				if Session.InsertPrompt() then
-					Session.InsertPrompt(false)
-					Insert(function()
-						return Inserter.ByName(Text)
-					end)
-
-					return
-				end
-
 				if Session.ImportPrompt() then
 					Session.ImportPrompt(false)
 

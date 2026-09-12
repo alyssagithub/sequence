@@ -11,6 +11,7 @@ const Timeline = require(script.Parent.Timeline)
 const Inspector = require(script.Parent.Inspector)
 const ReferencePanel = require(script.Parent.ReferencePanel)
 const EmotePanel = require(script.Parent.EmotePanel)
+const InsertWindow = require(script.Parent.InsertWindow)
 const Icon = require(script.Parent.Parent.Components.Icon)
 
 const Create = Vide.create
@@ -126,7 +127,7 @@ return function()
 					BackgroundColor3 = Theme.Colors.Panel,
 					LayoutOrder = 2,
 					Visible = function()
-						return Session.Panel() ~= nil
+						return Session.Panel() == "Reference" or Session.Panel() == "Emote"
 					end,
 
 					Create "Frame" {
@@ -146,6 +147,31 @@ return function()
 
 				Inspector(),
 			},
+		},
+		Create "TextButton" {
+			Name = "Modal",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.new(),
+			BackgroundTransparency = 0.5,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 79,
+			Visible = function()
+				return Session.Panel() == "Insert"
+			end,
+			Activated = function()
+				Session.Panel(nil)
+			end,
+
+			Vide.show(function()
+				return Session.Panel() == "Insert"
+			end, function()
+				return InsertWindow {
+					Close = function()
+						Session.Panel(nil)
+					end,
+				}
+			end),
 		},
 		Overlay.Layer(),
 	}

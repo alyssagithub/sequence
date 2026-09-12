@@ -11,6 +11,7 @@ const OnionSkin = require(script.Parent.Parent.Editor.OnionSkin)
 const PoseTool = require(script.Parent.Parent.Editor.PoseTool)
 const Playtest = require(script.Parent.Parent.Editor.Playtest)
 const Reference = require(script.Parent.Parent.Editor.Reference)
+const Inserter = require(script.Parent.Parent.Editor.Inserter)
 
 const App = {}
 
@@ -48,6 +49,7 @@ function App.New(CurrentPlugin: Plugin)
 			PoseTool.Destroy()
 			Playtest.Destroy()
 			Reference.Destroy()
+			Inserter.Destroy()
 
 			if RunService:IsRunning() then
 				Window.Enabled = false
