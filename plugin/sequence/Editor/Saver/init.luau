@@ -25,7 +25,7 @@ Saver.Locations = {
 
 Saver.LocationLabels = {
 	Rig = "Rig > AnimSaves",
-	Roblox = "ServerStorage > AnimSaves",
+	Roblox = "ServerStorage > RBX_ANIMSAVES",
 	Moon = "ServerStorage > MoonAnimatorExport",
 }
 
@@ -708,7 +708,7 @@ function Saver.ReadProperties(Source: Instance, Current: Clip.Clip): Clip.Clip
 end
 
 const function RobloxFolder(Loaded: Rig.Rig, Create: boolean): Instance?
-	local Root = ServerStorage:FindFirstChild("AnimSaves")
+	local Root = ServerStorage:FindFirstChild("RBX_ANIMSAVES") or ServerStorage:FindFirstChild("AnimSaves")
 
 	if not Root and not Create then
 		return nil
@@ -716,17 +716,22 @@ const function RobloxFolder(Loaded: Rig.Rig, Create: boolean): Instance?
 
 	if not Root then
 		Root = Templates.AnimSaves:Clone()
+		Root.Name = "RBX_ANIMSAVES"
 		Root.Parent = ServerStorage
 	end
 
 	for _, Child in Root:GetChildren() do
+		if Child:IsA("ObjectValue") and Child.Value == Loaded.Model then
+			return Child
+		end
+
 		for _, Link in Child:GetChildren() do
 			if Link:IsA("ObjectValue") and Link.Value == Loaded.Model then
 				return Child
 			end
 		end
 
-		if Child.Name == Loaded.Model.Name and not Child:FindFirstChildOfClass("ObjectValue") then
+		if Child.Name == Loaded.Model.Name and not Child:IsA("ObjectValue") and not Child:FindFirstChildOfClass("ObjectValue") then
 			return Child
 		end
 	end
@@ -735,15 +740,10 @@ const function RobloxFolder(Loaded: Rig.Rig, Create: boolean): Instance?
 		return nil
 	end
 
-	const Made = Templates.Folder:Clone()
+	const Made = Templates.RigLink:Clone()
 
 	Made.Name = Loaded.Model.Name
-
-	const Link = Templates.RigLink:Clone()
-
-	Link.Name = "Rig"
-	Link.Value = Loaded.Model
-	Link.Parent = Made
+	Made.Value = Loaded.Model
 	Made.Parent = Root
 
 	return Made

@@ -70,7 +70,7 @@ plays back the same. The curve view shows the selected joint's position and rota
 editable curves. Box select in the sheet, scale a selection with the span field, copy, paste,
 duplicate and reverse.
 
-Save writes a KeyframeSequence or a CurveAnimation to the rig's AnimSaves, to ServerStorage.AnimSaves
+Save writes a KeyframeSequence or a CurveAnimation to the rig's AnimSaves, to ServerStorage.RBX_ANIMSAVES
 the way Roblox's editor does, or to ServerStorage.MoonAnimatorExport, where Moon Animator's Export All puts its files. Open lists all three. Any saved
 animation can be converted between keyframes and curves in place. Publish saves then opens Studio's
 upload window, and an asset id can be imported through the name box.

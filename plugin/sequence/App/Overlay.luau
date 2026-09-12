@@ -26,9 +26,11 @@ end
 
 function Overlay.Menu(Anchor: GuiObject, Entries: {Entry}, Width: number?)
 	const Origin = if Root then Root.AbsolutePosition else Vector2.zero
+	const Corner = Anchor.AbsolutePosition - Origin
+	const Beside = Corner.X < 60
 
 	Overlay.Open({
-		Position = Anchor.AbsolutePosition - Origin + Vector2.new(0, Anchor.AbsoluteSize.Y + 2),
+		Position = if Beside then Corner + Vector2.new(Anchor.AbsoluteSize.X + 4, 0) else Corner + Vector2.new(0, Anchor.AbsoluteSize.Y + 2),
 		Width = math.max(Width or 0, Anchor.AbsoluteSize.X),
 		Entries = Entries,
 	})
@@ -144,19 +146,31 @@ function Overlay.Layer()
 		end),
 
 		Vide.show(Overlay.Open, function(Open)
-			return Create "Frame" {
+			const function Height(): number
+				return #Open().Entries * (Settings.TextSize() + 12) + 8
+			end
+
+			const function Room(): Vector2
+				return if Root then Root.AbsoluteSize else Vector2.new(1000, 1000)
+			end
+
+			return Create "ScrollingFrame" {
 				Name = "Menu",
 				Position = function()
 					const Where = Open().Position
-					const Room = if Root then Root.AbsoluteSize else Vector2.new(1000, 1000)
-					const Height = #Open().Entries * (Settings.TextSize() + 12) + 8
+					const Shown = math.min(Height(), Room().Y - 4)
 
-					return UDim2.fromOffset(math.max(0, math.min(Where.X, Room.X - Open().Width)), if Where.Y + Height > Room.Y then math.max(0, Where.Y - Height - 26) else Where.Y)
+					return UDim2.fromOffset(math.max(0, math.min(Where.X, Room().X - Open().Width)), math.max(2, math.min(Where.Y, Room().Y - Shown - 2)))
 				end,
-				AutomaticSize = Enum.AutomaticSize.Y,
 				Size = function()
-					return UDim2.fromOffset(Open().Width, 0)
+					return UDim2.fromOffset(Open().Width, math.min(Height(), Room().Y - 4))
 				end,
+				AutomaticCanvasSize = Enum.AutomaticSize.Y,
+				CanvasSize = UDim2.new(),
+				ScrollBarThickness = 4,
+				ScrollBarImageColor3 = Theme.Colors.DimText,
+				ScrollingDirection = Enum.ScrollingDirection.Y,
+				BorderSizePixel = 0,
 				BackgroundColor3 = Theme.Colors.Background,
 				ZIndex = 101,
 
