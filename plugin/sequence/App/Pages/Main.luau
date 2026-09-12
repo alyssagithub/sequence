@@ -9,6 +9,8 @@ const TopBar = require(script.Parent.TopBar)
 const Transport = require(script.Parent.Transport)
 const Timeline = require(script.Parent.Timeline)
 const Inspector = require(script.Parent.Inspector)
+const ReferencePanel = require(script.Parent.ReferencePanel)
+const EmotePanel = require(script.Parent.EmotePanel)
 const Icon = require(script.Parent.Parent.Components.Icon)
 
 const Create = Vide.create
@@ -50,61 +52,90 @@ return function()
 				LayoutOrder = 3,
 
 				Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
-
-				Timeline(),
+				Create "UIListLayout" {
+					FillDirection = Enum.FillDirection.Horizontal,
+					SortOrder = Enum.SortOrder.LayoutOrder,
+				},
 				Create "Frame" {
-					Name = "Welcome",
+					Name = "TimelineHolder",
 					Size = UDim2.fromScale(1, 1),
-					BackgroundColor3 = Theme.Colors.Background,
-					ZIndex = 30,
+					BackgroundTransparency = 1,
+					LayoutOrder = 1,
+
+					Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
+
+					Timeline(),
+					Create "Frame" {
+						Name = "Welcome",
+						Size = UDim2.fromScale(1, 1),
+						BackgroundColor3 = Theme.Colors.Background,
+						ZIndex = 30,
+						Visible = function()
+							return Session.Rig() == nil
+						end,
+
+						Create "Frame" {
+							Name = "Card",
+							AnchorPoint = Vector2.new(0.5, 0.5),
+							Position = UDim2.fromScale(0.5, 0.5),
+							AutomaticSize = Enum.AutomaticSize.XY,
+							BackgroundTransparency = 1,
+							ZIndex = 31,
+
+							Create "UIListLayout" {
+								HorizontalAlignment = Enum.HorizontalAlignment.Center,
+								Padding = UDim.new(0, 8),
+								SortOrder = Enum.SortOrder.LayoutOrder,
+							},
+							Icon {
+								Name = "person-standing",
+								Size = 40,
+								LayoutOrder = 1,
+							},
+							Create "TextLabel" {
+								AutomaticSize = Enum.AutomaticSize.XY,
+								BackgroundTransparency = 1,
+								TextColor3 = Theme.Colors.Text,
+								TextSize = function()
+									return Settings.TextSize() + 4
+								end,
+								FontFace = Font.fromEnum(Enum.Font.BuilderSansBold),
+								Text = "Nothing to animate yet",
+								LayoutOrder = 2,
+								ZIndex = 31,
+							},
+							Create "TextLabel" {
+								AutomaticSize = Enum.AutomaticSize.XY,
+								BackgroundTransparency = 1,
+								TextColor3 = Theme.Colors.DimText,
+								TextSize = Settings.TextSize,
+								FontFace = Font.fromEnum(Enum.Font.BuilderSans),
+								TextWrapped = true,
+								Text = "Select one or more rigs in the viewport, then press the rig button above. Any model with Motor6D joints works: characters, doors, vehicles.",
+								LayoutOrder = 3,
+								ZIndex = 31,
+
+								Create "UISizeConstraint" {MaxSize = Vector2.new(360, math.huge)},
+							},
+						},
+					},
+				},
+				Create "Frame" {
+					Name = "Side",
+					Size = UDim2.new(0, 300, 1, 0),
+					BackgroundColor3 = Theme.Colors.Panel,
+					LayoutOrder = 2,
 					Visible = function()
-						return Session.Rig() == nil
+						return Session.Panel() ~= nil
 					end,
 
 					Create "Frame" {
-						Name = "Card",
-						AnchorPoint = Vector2.new(0.5, 0.5),
-						Position = UDim2.fromScale(0.5, 0.5),
-						AutomaticSize = Enum.AutomaticSize.XY,
-						BackgroundTransparency = 1,
-						ZIndex = 31,
-
-						Create "UIListLayout" {
-							HorizontalAlignment = Enum.HorizontalAlignment.Center,
-							Padding = UDim.new(0, 8),
-							SortOrder = Enum.SortOrder.LayoutOrder,
-						},
-						Icon {
-							Name = "person-standing",
-							Size = 40,
-							LayoutOrder = 1,
-						},
-						Create "TextLabel" {
-							AutomaticSize = Enum.AutomaticSize.XY,
-							BackgroundTransparency = 1,
-							TextColor3 = Theme.Colors.Text,
-							TextSize = function()
-								return Settings.TextSize() + 4
-							end,
-							FontFace = Font.fromEnum(Enum.Font.BuilderSansBold),
-							Text = "Nothing to animate yet",
-							LayoutOrder = 2,
-							ZIndex = 31,
-						},
-						Create "TextLabel" {
-							AutomaticSize = Enum.AutomaticSize.XY,
-							BackgroundTransparency = 1,
-							TextColor3 = Theme.Colors.DimText,
-							TextSize = Settings.TextSize,
-							FontFace = Font.fromEnum(Enum.Font.BuilderSans),
-							TextWrapped = true,
-							Text = "Select a rig in the viewport, then press the rig button above. Any model with Motor6D joints works: characters, doors, vehicles.",
-							LayoutOrder = 3,
-							ZIndex = 31,
-
-							Create "UISizeConstraint" {MaxSize = Vector2.new(360, math.huge)},
-						},
+						Name = "Edge",
+						Size = UDim2.new(0, 1, 1, 0),
+						BackgroundColor3 = Theme.Colors.Border,
 					},
+					ReferencePanel(),
+					EmotePanel(),
 				},
 			},
 			Create "Frame" {

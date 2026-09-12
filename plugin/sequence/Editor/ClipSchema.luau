@@ -15,7 +15,13 @@ end
 
 const KeySchema = Typed.table({
 	Time = Typed.number({min = 0}),
-	Value = Typed.is("CFrame"),
+	Value = Typed.refine(Typed.any())(function(Value, Result)
+		if Value == nil then
+			return Result.err("a key needs a value")
+		end
+
+		return Result.ok()
+	end),
 	EasingStyle = OneOf(Easing.Styles),
 	EasingDirection = OneOf(Easing.Directions),
 })
@@ -25,7 +31,11 @@ const ClipSchema = Typed.table({
 	Length = Typed.number({min = 0}),
 	Looping = Typed.boolean(),
 	Priority = OneOf(Clip.Priorities),
-	Tracks = Typed.iterable(Typed.string(), Typed.table({Keys = Typed.array(KeySchema)})),
+	Tracks = Typed.iterable(Typed.string(), Typed.table({
+		Keys = Typed.array(KeySchema),
+		Object = Typed.optional(Typed.is("Instance")),
+		Property = Typed.optional(Typed.string()),
+	})),
 	Markers = Typed.array(Typed.table({
 		Time = Typed.number({min = 0}),
 		Name = Typed.string({length = {min = 1}}),

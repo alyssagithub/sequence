@@ -1,7 +1,7 @@
 --!strict
 const Easing = {}
 
-export type Style = "Linear" | "Constant" | "Cubic" | "Elastic" | "Bounce"
+export type Style = "Linear" | "Constant" | "Cubic" | "Elastic" | "Bounce" | "Sine" | "Quad" | "Quart" | "Quint" | "Expo" | "Circ" | "Back" | "Smooth"
 export type Direction = "In" | "Out" | "InOut"
 
 Easing.Styles = {
@@ -10,17 +10,29 @@ Easing.Styles = {
 	"Cubic",
 	"Elastic",
 	"Bounce",
+	"Sine",
+	"Quad",
+	"Quart",
+	"Quint",
+	"Expo",
+	"Circ",
+	"Back",
+	"Smooth",
 } :: {Style}
+
+Easing.Native = {
+	Linear = true,
+	Constant = true,
+	Cubic = true,
+	Elastic = true,
+	Bounce = true,
+}
 
 Easing.Directions = {
 	"In",
 	"Out",
 	"InOut",
 } :: {Direction}
-
-const function CubicIn(Alpha: number): number
-	return Alpha * Alpha * Alpha
-end
 
 const function ElasticIn(Alpha: number): number
 	if Alpha == 0 or Alpha == 1 then
@@ -53,10 +65,36 @@ const function BounceOut(Alpha: number): number
 end
 
 const Ins: {[string]: (number) -> number} = {
-	Cubic = CubicIn,
+	Cubic = function(Alpha: number): number
+		return Alpha * Alpha * Alpha
+	end,
 	Elastic = ElasticIn,
 	Bounce = function(Alpha: number): number
 		return 1 - BounceOut(1 - Alpha)
+	end,
+	Sine = function(Alpha: number): number
+		return 1 - math.cos(Alpha * math.pi / 2)
+	end,
+	Quad = function(Alpha: number): number
+		return Alpha * Alpha
+	end,
+	Quart = function(Alpha: number): number
+		return Alpha ^ 4
+	end,
+	Quint = function(Alpha: number): number
+		return Alpha ^ 5
+	end,
+	Expo = function(Alpha: number): number
+		return if Alpha == 0 then 0 else 2 ^ (10 * (Alpha - 1))
+	end,
+	Circ = function(Alpha: number): number
+		return 1 - math.sqrt(1 - Alpha * Alpha)
+	end,
+	Back = function(Alpha: number): number
+		return Alpha * Alpha * (2.70158 * Alpha - 1.70158)
+	end,
+	Smooth = function(Alpha: number): number
+		return Alpha * Alpha * (3 - 2 * Alpha)
 	end,
 }
 
@@ -67,6 +105,10 @@ function Easing.Apply(Alpha: number, Style: Style, Direction: Direction): number
 
 	if Style == "Constant" then
 		return if Alpha > 0 then 1 else 0
+	end
+
+	if Style == "Smooth" then
+		return Ins.Smooth(Alpha)
 	end
 
 	const In = Ins[Style]
@@ -102,6 +144,16 @@ function Easing.Apply(Alpha: number, Style: Style, Direction: Direction): number
 	end
 
 	return 1 - In((1 - Alpha) * 2) / 2
+end
+
+function Easing.Slope(Style: Style, Direction: Direction, AtStart: boolean): number
+	const Step = 0.001
+
+	if AtStart then
+		return Easing.Apply(Step, Style, Direction) / Step
+	end
+
+	return (1 - Easing.Apply(1 - Step, Style, Direction)) / Step
 end
 
 return Easing

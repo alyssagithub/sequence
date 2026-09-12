@@ -9,20 +9,33 @@ const Session = require(script.Parent.Parent.Parent.Editor.Session)
 const Clip = require(script.Parent.Parent.Parent.Editor.Clip)
 const Rig = require(script.Parent.Parent.Parent.Editor.Rig)
 const Easing = require(script.Parent.Parent.Parent.Editor.Easing)
+const Emote = require(script.Parent.Parent.Parent.Editor.Emote)
 const Icon = require(script.Parent.Parent.Components.Icon)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
+const CurveView = require(script.Parent.CurveView)
 
 const Create = Vide.create
 
-const NameWidth = 190
+const NameWidth = 210
 const LanePadding = 10
 
 type Drag = {
-	Kind: "Scrub" | "Keys" | "Marker",
+	Kind: "Scrub" | "Keys" | "Marker" | "Box",
 	StartX: number,
+	StartY: number,
 	StartTime: number,
 	Applied: number,
 	Marker: Clip.Marker?,
+	Moved: boolean,
+}
+
+type RowEntry = {
+	Kind: "Rig" | "Joint" | "Property",
+	Entry: Session.Entry,
+	Joint: Rig.Joint?,
+	TrackName: string?,
+	Label: string,
+	Depth: number,
 }
 
 return function()
@@ -30,6 +43,8 @@ return function()
 	const Offset = Vide.source(0)
 	const UserZoomed = Vide.source(false)
 	const LaneWidth = Vide.source(400)
+	const Box = Vide.source(nil :: {From: Vector2, To: Vector2}?)
+	const RowFrames: {[Frame]: string} = {}
 	local Root: Frame
 	local Drag: Drag?
 
@@ -55,7 +70,7 @@ return function()
 	end
 
 	Vide.effect(function()
-		const Length = Session.Current().Length
+		const Length = Session.SceneLength()
 		const Width = LaneWidth()
 
 		if not UserZoomed() then
@@ -63,9 +78,19 @@ return function()
 		end
 	end)
 
+	const Problems = Vide.derive(function()
+		const Loaded = Session.Rig()
+
+		if not Session.EmoteChecks() or not Loaded then
+			return {}
+		end
+
+		return Emote.Check(Session.Current(), Loaded)
+	end)
+
 	const function Ticks(): {{Time: number, Label: string}}
 		const Rate = Session.FrameRate()
-		const Length = Session.Current().Length
+		const Length = Session.SceneLength()
 		local Step = 1 / Rate
 
 		for _, Frames in {
@@ -111,38 +136,72 @@ return function()
 		return Found
 	end
 
-	const function VisibleJoints(): {Rig.Joint}
-		const Loaded = Session.Rig()
+	const function CollapseKey(Entry: Session.Entry, Name: string): string
+		return `{Entry.Model:GetDebugId()}:{Name}`
+	end
+
+	const function Rows(): {RowEntry}
 		const Collapsed = Session.Collapsed()
-		const Shown = {}
+		const Active = Session.Rig()
+		const Shown: {RowEntry} = {}
 
-		if not Loaded then
-			return Shown
-		end
+		for _, Entry in Session.Rigs() do
+			table.insert(Shown, {
+				Kind = "Rig",
+				Entry = Entry,
+				Label = Entry.Model.Name,
+				Depth = 0,
+			})
 
-		for _, Joint in Loaded.Joints do
-			local Hidden = false
-			local Ancestor = Joint.Parent
-
-			while Ancestor do
-				if Collapsed[Ancestor.Name] then
-					Hidden = true
-					break
-				end
-
-				Ancestor = Ancestor.Parent
+			if Collapsed[CollapseKey(Entry, "")] then
+				continue
 			end
 
-			if not Hidden then
-				table.insert(Shown, Joint)
+			for _, Joint in Entry.Loaded.Joints do
+				local Hidden = false
+				local Ancestor = Joint.Parent
+
+				while Ancestor do
+					if Collapsed[CollapseKey(Entry, Ancestor.Name)] then
+						Hidden = true
+						break
+					end
+
+					Ancestor = Ancestor.Parent
+				end
+
+				if not Hidden then
+					table.insert(Shown, {
+						Kind = "Joint",
+						Entry = Entry,
+						Joint = Joint,
+						TrackName = Joint.Name,
+						Label = Joint.Name,
+						Depth = Joint.Depth + 1,
+					})
+				end
+			end
+
+			const Current = if Active and Entry.Model == Active.Model then Session.Current() else Entry.Clip
+
+			for Name, Track in Current.Tracks do
+				if Clip.IsProperty(Name) and Track.Object then
+					table.insert(Shown, {
+						Kind = "Property",
+						Entry = Entry,
+						TrackName = Name,
+						Label = `{Track.Object.Name}.{Track.Property}`,
+						Depth = 1,
+					})
+				end
 			end
 		end
 
 		return Shown
 	end
 
-	const function KeyMenu(Position: Vector2, JointName: string, Time: number)
-		const Key = Session.KeyAt(JointName, Time)
+	const function KeyMenu(Position: Vector2, TrackName: string, Time: number)
+		const Key = Session.KeyAt(TrackName, Time)
 
 		if not Key then
 			return
@@ -166,7 +225,7 @@ return function()
 			table.insert(Entries, {
 				Label = `Ease {Direction}`,
 				Checked = Key.EasingDirection == Direction,
-				Disabled = Key.EasingStyle == "Linear" or Key.EasingStyle == "Constant",
+				Disabled = Key.EasingStyle == "Linear" or Key.EasingStyle == "Constant" or Key.EasingStyle == "Smooth",
 				Action = function()
 					Session.SetSelectedEasing(nil, Direction)
 				end,
@@ -191,17 +250,18 @@ return function()
 		Overlay.MenuAt(Position, Entries, 170)
 	end
 
-	const function LaneMenu(Position: Vector2, JointName: string?)
+	const function LaneMenu(Position: Vector2, TrackName: string?)
 		const Time = Session.SnapTime(TimeAt(Position.X))
-
-		Overlay.MenuAt(Position, {
+		const Entries: {Overlay.Entry} = {
 			{
-				Label = if JointName then `Add keyframe for {JointName}` else "Add keyframe for every joint",
+				Label = if TrackName then `Add keyframe here` else "Add keyframe for every joint",
 				Action = function()
 					Session.Seek(Time)
 
-					if JointName then
-						Session.AddKeys({JointName})
+					if TrackName and Clip.IsProperty(TrackName) then
+						Session.KeyProperty(TrackName)
+					elseif TrackName then
+						Session.AddKeys({TrackName})
 					else
 						Session.KeyAll()
 					end
@@ -227,7 +287,19 @@ return function()
 					Session.SelectedMarker(Clip.FindMarker(Session.Current(), Time, "Event"))
 				end,
 			},
-		}, 220)
+		}
+
+		if TrackName and Clip.IsProperty(TrackName) then
+			table.insert(Entries, {Label = "", Divider = true})
+			table.insert(Entries, {
+				Label = "Remove this property track",
+				Action = function()
+					Session.Edit(Clip.RemoveTrack(Session.Current(), TrackName))
+				end,
+			})
+		end
+
+		Overlay.MenuAt(Position, Entries, 220)
 	end
 
 	const function Diamond(Props: {
@@ -236,7 +308,7 @@ return function()
 		Square: (() -> boolean)?,
 		OnDown: (Shift: boolean, X: number) -> (),
 		OnMenu: (Position: Vector2) -> (),
-		Muted: boolean?,
+		Muted: (() -> boolean)?,
 	})
 		const Hovered = Vide.source(false)
 
@@ -285,7 +357,7 @@ return function()
 						return Theme.Colors.Accent()
 					end
 
-					return if Props.Muted then Theme.Colors.DimText() else Theme.Colors.Text()
+					return if Props.Muted and Props.Muted() then Theme.Colors.DimText() else Theme.Colors.Text()
 				end,
 				ZIndex = 6,
 
@@ -316,42 +388,249 @@ return function()
 		}
 	end
 
-	const function StartDrag(Kind: "Scrub" | "Keys" | "Marker", X: number, StartTime: number, Marker: Clip.Marker?)
+	const function StartDrag(Kind: "Scrub" | "Keys" | "Marker" | "Box", X: number, Y: number, StartTime: number, Marker: Clip.Marker?)
 		Drag = {
 			Kind = Kind,
 			StartX = X,
+			StartY = Y,
 			StartTime = StartTime,
 			Applied = 0,
 			Marker = Marker,
+			Moved = false,
 		}
 	end
 
+	const function TracksBetween(TopY: number, BottomY: number): {string}
+		const Found = {}
+
+		for Frame, Name in RowFrames do
+			if not Frame.Parent then
+				continue
+			end
+
+			const Top = Frame.AbsolutePosition.Y
+			const Bottom = Top + Frame.AbsoluteSize.Y
+
+			if Bottom >= TopY and Top <= BottomY then
+				table.insert(Found, Name)
+			end
+		end
+
+		return Found
+	end
+
 	const function EndDrag()
-		if not Drag then
+		const Active = Drag
+
+		if not Active then
 			return
+		end
+
+		if Active.Kind == "Box" then
+			const Current = Box()
+
+			if Current then
+				const Low = Vector2.new(math.min(Current.From.X, Current.To.X), math.min(Current.From.Y, Current.To.Y))
+				const High = Vector2.new(math.max(Current.From.X, Current.To.X), math.max(Current.From.Y, Current.To.Y))
+
+				Session.SelectBox(TracksBetween(Low.Y, High.Y), TimeAt(Low.X), TimeAt(High.X), UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift))
+			elseif not Active.Moved then
+				Session.SelectedKeys({})
+				Session.Seek(Active.StartTime)
+			end
+
+			Box(nil)
 		end
 
 		Drag = nil
 		Session.EndMerge()
 	end
 
-	const function Row(Joint: Rig.Joint, Order: () -> number)
+	const function LaneInput(TrackName: string?)
+		return function(Input: InputObject)
+			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+				StartDrag("Box", Input.Position.X, Input.Position.Y, TimeAt(Input.Position.X))
+			elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+				LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), TrackName)
+			end
+		end
+	end
+
+	const function Row(Entry: RowEntry, Order: () -> number)
+		const Rig = Entry.Entry
+
+		const function IsActive(): boolean
+			const Active = Session.Rig()
+
+			return Active ~= nil and Active.Model == Rig.Model
+		end
+
+		const function Current(): Clip.Clip
+			return if IsActive() then Session.Current() else Rig.Clip
+		end
+
+		if Entry.Kind == "Rig" then
+			return Create "Frame" {
+				Name = "RigRow",
+				Size = function()
+					return UDim2.new(1, 0, 0, RowHeight())
+				end,
+				BackgroundColor3 = Theme.Colors.Panel,
+				LayoutOrder = Order,
+
+				Create "UIListLayout" {
+					FillDirection = Enum.FillDirection.Horizontal,
+					SortOrder = Enum.SortOrder.LayoutOrder,
+				},
+				NameCell(1,
+					Create "TextButton" {
+						Name = "Activate",
+						Size = UDim2.new(1, -26, 1, 0),
+						BackgroundTransparency = 1,
+						Text = "",
+						ZIndex = 4,
+						Activated = function()
+							Session.Activate(Rig.Model)
+						end,
+
+						Create "TextButton" {
+							Name = "Fold",
+							Position = UDim2.fromOffset(4, 0),
+							Size = UDim2.new(0, 16, 1, 0),
+							BackgroundTransparency = 1,
+							Text = "",
+							ZIndex = 5,
+							Activated = function()
+								const Collapsed = table.clone(Session.Collapsed())
+								const Key = CollapseKey(Rig, "")
+
+								Collapsed[Key] = not Collapsed[Key]
+								Session.Collapsed(Collapsed)
+							end,
+
+							Icon {
+								Name = function()
+									return if Session.Collapsed()[CollapseKey(Rig, "")] then "chevron-right" else "chevron-down"
+								end,
+								Size = Settings.SmallText,
+								Position = UDim2.fromScale(0.5, 0.5),
+								AnchorPoint = Vector2.new(0.5, 0.5),
+							},
+						},
+						Icon {
+							Name = "person-standing",
+							Position = UDim2.fromOffset(22, 0),
+							AnchorPoint = Vector2.new(0, 0),
+							Colour = function()
+								return if IsActive() then Theme.Colors.Accent() else Theme.Colors.DimText()
+							end,
+						},
+						Create "TextLabel" {
+							Name = "Label",
+							Position = UDim2.fromOffset(42, 0),
+							Size = UDim2.new(1, -46, 1, 0),
+							BackgroundTransparency = 1,
+							TextXAlignment = Enum.TextXAlignment.Left,
+							TextTruncate = Enum.TextTruncate.AtEnd,
+							TextColor3 = function()
+								return if IsActive() then Theme.Colors.Text() else Theme.Colors.DimText()
+							end,
+							TextSize = Settings.TextSize,
+							FontFace = Font.fromEnum(Enum.Font.BuilderSansBold),
+							Text = function()
+								return `{Rig.Model.Name}  ·  {Current().Name}`
+							end,
+							ZIndex = 5,
+						},
+					},
+					IconButton {
+						Icon = "x",
+						Size = Settings.SmallText,
+						Position = UDim2.new(1, -4, 0.5, 0),
+						AnchorPoint = Vector2.new(1, 0.5),
+						Tooltip = "Release this rig",
+						OnClick = function()
+							Session.Activate(Rig.Model)
+							Session.Confirm("Release", function()
+								Session.RemoveRig(Rig.Model)
+							end)
+						end,
+					}
+				),
+				Create "Frame" {
+					Name = "Lane",
+					Size = UDim2.new(1, -NameWidth, 1, 0),
+					BackgroundTransparency = 1,
+					LayoutOrder = 2,
+					ClipsDescendants = true,
+					InputBegan = LaneInput(nil),
+
+					Vide.indexes(function()
+						return Clip.KeyTimes(Current())
+					end, function(Time)
+						return Diamond {
+							Time = Time,
+							Muted = function()
+								return not IsActive()
+							end,
+							Selected = function()
+								if not IsActive() then
+									return false
+								end
+
+								for _, Ref in Session.SelectedKeys() do
+									if math.abs(Ref.Time - Time()) < 0.0005 then
+										return true
+									end
+								end
+
+								return false
+							end,
+							OnDown = function(Shift: boolean, X: number)
+								Session.Activate(Rig.Model)
+								Session.SelectColumn(Time(), Shift)
+								Session.Seek(Time())
+								StartDrag("Keys", X, 0, Time())
+							end,
+							OnMenu = function(Position: Vector2)
+								Session.Activate(Rig.Model)
+								Session.SelectColumn(Time(), false)
+
+								const First = Session.SelectedKeys()[1]
+
+								if First then
+									KeyMenu(Position, First.Joint, First.Time)
+								end
+							end,
+						}
+					end),
+				},
+			}
+		end
+
+		const TrackName = Entry.TrackName :: string
+		const Joint = Entry.Joint
+
 		const function Selected(): boolean
-			return Session.SelectedJoint() == Joint.Name
+			return IsActive() and Session.SelectedJoint() == TrackName
 		end
 
 		const function Keys(): {Clip.Key}
-			const Track = Session.Current().Tracks[Joint.Name]
+			const Track = Current().Tracks[TrackName]
 
 			return if Track then Track.Keys else {}
 		end
 
 		const function HasKeyNow(): boolean
-			return not Session.Playing() and Session.KeyAt(Joint.Name, Session.SnapTime(Session.Time())) ~= nil
+			return IsActive() and not Session.Playing() and Session.KeyAt(TrackName, Session.SnapTime(Session.Time())) ~= nil
+		end
+
+		const function Pinned(): boolean
+			return IsActive() and Session.Pins()[TrackName] ~= nil
 		end
 
 		return Create "Frame" {
-			Name = Joint.Name,
+			Name = Entry.Label,
 			Size = function()
 				return UDim2.new(1, 0, 0, RowHeight())
 			end,
@@ -360,6 +639,14 @@ return function()
 			end,
 			LayoutOrder = Order,
 
+			Vide.action(function(Object: Frame)
+				RowFrames[Object] = TrackName
+
+				Vide.cleanup(function()
+					RowFrames[Object] = nil
+				end)
+			end),
+
 			Create "UIListLayout" {
 				FillDirection = Enum.FillDirection.Horizontal,
 				SortOrder = Enum.SortOrder.LayoutOrder,
@@ -367,7 +654,7 @@ return function()
 			NameCell(1,
 				Create "TextButton" {
 					Name = "Select",
-					Size = UDim2.new(1, -26, 1, 0),
+					Size = UDim2.new(1, -50, 1, 0),
 					BackgroundColor3 = Theme.Colors.Button,
 					BackgroundTransparency = function()
 						return if Selected() then 0 else 1
@@ -376,55 +663,82 @@ return function()
 					AutoButtonColor = false,
 					ZIndex = 4,
 					Activated = function()
-						Session.SelectJoint(if Selected() then nil else Joint.Name)
+						Session.Activate(Rig.Model)
+
+						if Joint then
+							Session.SelectJoint(if Selected() then nil else TrackName)
+						end
 					end,
 
 					Create "TextButton" {
 						Name = "Fold",
 						Position = function()
-							return UDim2.fromOffset(4 + Joint.Depth * 12, 0)
+							return UDim2.fromOffset(4 + Entry.Depth * 12, 0)
 						end,
 						Size = UDim2.new(0, 16, 1, 0),
 						BackgroundTransparency = 1,
 						Text = "",
 						ZIndex = 5,
-						Visible = #Joint.Children > 0,
+						Visible = Joint ~= nil and #Joint.Children > 0,
 						Activated = function()
 							const Collapsed = table.clone(Session.Collapsed())
+							const Key = CollapseKey(Rig, TrackName)
 
-							Collapsed[Joint.Name] = not Collapsed[Joint.Name]
+							Collapsed[Key] = not Collapsed[Key]
 							Session.Collapsed(Collapsed)
 						end,
 
 						Icon {
 							Name = function()
-								return if Session.Collapsed()[Joint.Name] then "chevron-right" else "chevron-down"
+								return if Session.Collapsed()[CollapseKey(Rig, TrackName)] then "chevron-right" else "chevron-down"
 							end,
 							Size = Settings.SmallText,
 							Position = UDim2.fromScale(0.5, 0.5),
 							AnchorPoint = Vector2.new(0.5, 0.5),
 						},
 					},
+					if Entry.Kind == "Property" then Icon {
+						Name = "sliders-horizontal",
+						Size = Settings.SmallText,
+						Position = function()
+							return UDim2.new(0, 6 + Entry.Depth * 12, 0.5, 0)
+						end,
+						AnchorPoint = Vector2.new(0, 0.5),
+					} else nil,
 					Create "TextLabel" {
 						Name = "Label",
 						Position = function()
-							return UDim2.fromOffset(22 + Joint.Depth * 12, 0)
+							return UDim2.fromOffset(22 + Entry.Depth * 12, 0)
 						end,
 						Size = function()
-							return UDim2.new(1, -(24 + Joint.Depth * 12), 1, 0)
+							return UDim2.new(1, -(24 + Entry.Depth * 12), 1, 0)
 						end,
 						BackgroundTransparency = 1,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						TextTruncate = Enum.TextTruncate.AtEnd,
 						TextColor3 = function()
-							return if Selected() then Theme.Colors.Text() elseif #Keys() > 0 then Theme.Colors.Text() else Theme.Colors.DimText()
+							return if Selected() or #Keys() > 0 then Theme.Colors.Text() else Theme.Colors.DimText()
 						end,
 						TextSize = Settings.TextSize,
-						FontFace = Font.fromEnum(if Joint.Depth == 0 then Enum.Font.BuilderSansMedium else Enum.Font.BuilderSans),
-						Text = Joint.Name,
+						FontFace = Font.fromEnum(if Entry.Depth <= 1 then Enum.Font.BuilderSansMedium else Enum.Font.BuilderSans),
+						Text = Entry.Label,
 						ZIndex = 5,
 					},
 				},
+				if Joint then IconButton {
+					Icon = "pin",
+					Size = Settings.SmallText,
+					Position = UDim2.new(1, -28, 0.5, 0),
+					AnchorPoint = Vector2.new(1, 0.5),
+					Active = Pinned,
+					Tooltip = function()
+						return if Pinned() then "Unpin, let this part follow its parent again" else "Pin this part in place, parents move around it"
+					end,
+					OnClick = function()
+						Session.Activate(Rig.Model)
+						Session.TogglePin(TrackName)
+					end,
+				} else nil,
 				IconButton {
 					Icon = "diamond",
 					Size = Settings.SmallText,
@@ -432,15 +746,19 @@ return function()
 					AnchorPoint = Vector2.new(1, 0.5),
 					Active = HasKeyNow,
 					Tooltip = function()
-						return if HasKeyNow() then "Remove this keyframe" else "Keyframe this joint here"
+						return if HasKeyNow() then "Remove this keyframe" else "Keyframe this here"
 					end,
 					OnClick = function()
+						Session.Activate(Rig.Model)
+
 						const Time = Session.SnapTime(Session.Time())
 
 						if HasKeyNow() then
-							Session.Edit(Clip.RemoveKey(Session.Current(), Joint.Name, Time))
+							Session.Edit(Clip.RemoveKey(Session.Current(), TrackName, Time))
+						elseif Entry.Kind == "Property" then
+							Session.KeyProperty(TrackName)
 						else
-							Session.AddKeys({Joint.Name})
+							Session.AddKeys({TrackName})
 						end
 					end,
 				}
@@ -451,15 +769,7 @@ return function()
 				BackgroundTransparency = 1,
 				LayoutOrder = 2,
 				ClipsDescendants = true,
-				InputBegan = function(Input: InputObject)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-						Session.SelectedKeys({})
-						Session.Seek(TimeAt(Input.Position.X))
-						StartDrag("Scrub", Input.Position.X, Session.Time())
-					elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
-						LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), Joint.Name)
-					end
-				end,
+				InputBegan = LaneInput(TrackName),
 
 				Create "Frame" {
 					Name = "Underline",
@@ -473,23 +783,29 @@ return function()
 						Time = function()
 							return Key.Time
 						end,
+						Muted = function()
+							return not IsActive()
+						end,
 						Selected = function()
-							return Session.IsSelected(Joint.Name, Key.Time)
+							return IsActive() and Session.IsSelected(TrackName, Key.Time)
 						end,
 						Square = function()
 							return Key.EasingStyle == "Constant"
 						end,
 						OnDown = function(Shift: boolean, X: number)
-							Session.SelectKey(Joint.Name, Key.Time, Shift)
+							Session.Activate(Rig.Model)
+							Session.SelectKey(TrackName, Key.Time, Shift)
 							Session.Seek(Key.Time)
-							StartDrag("Keys", X, Key.Time)
+							StartDrag("Keys", X, 0, Key.Time)
 						end,
 						OnMenu = function(Position: Vector2)
-							if not Session.IsSelected(Joint.Name, Key.Time) then
-								Session.SelectKey(Joint.Name, Key.Time, false)
+							Session.Activate(Rig.Model)
+
+							if not Session.IsSelected(TrackName, Key.Time) then
+								Session.SelectKey(TrackName, Key.Time, false)
 							end
 
-							KeyMenu(Position, Joint.Name, Key.Time)
+							KeyMenu(Position, TrackName, Key.Time)
 						end,
 					}
 				end),
@@ -538,7 +854,7 @@ return function()
 			NameCell(1,
 				Create "TextLabel" {
 					Position = UDim2.fromOffset(8, 0),
-					Size = UDim2.new(1, -40, 1, 0),
+					Size = UDim2.new(1, -64, 1, 0),
 					BackgroundTransparency = 1,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					TextColor3 = Theme.Colors.DimText,
@@ -546,9 +862,36 @@ return function()
 					FontFace = Font.fromEnum(Enum.Font.BuilderSansMedium),
 					ZIndex = 4,
 					Text = function()
-						const Loaded = Session.Rig()
+						const Count = #Session.Rigs()
 
-						return if Loaded then `{#Loaded.Joints} joints` else "Joints"
+						if Count == 0 then
+							return "Rigs"
+						end
+
+						local Joints = 0
+
+						for _, Entry in Session.Rigs() do
+							Joints += #Entry.Loaded.Joints
+						end
+
+						return `{Count} rig{if Count == 1 then "" else "s"}, {Joints} joints`
+					end,
+				},
+				IconButton {
+					Icon = function()
+						return if Session.View() == "Curves" then "list" else "spline"
+					end,
+					Size = Settings.SmallText,
+					Position = UDim2.new(1, -28, 0.5, 0),
+					AnchorPoint = Vector2.new(1, 0.5),
+					Tooltip = function()
+						return if Session.View() == "Curves" then "Back to the dope sheet" else "Curve editor for the selected joint"
+					end,
+					Active = function()
+						return Session.View() == "Curves"
+					end,
+					OnClick = function()
+						Session.View(if Session.View() == "Curves" then "Sheet" else "Curves")
 					end,
 				},
 				IconButton {
@@ -559,7 +902,7 @@ return function()
 					Tooltip = "Fit the whole animation",
 					OnClick = function()
 						UserZoomed(false)
-						Fit(Session.Current().Length, LaneWidth())
+						Fit(Session.SceneLength(), LaneWidth())
 					end,
 				}
 			),
@@ -576,7 +919,7 @@ return function()
 
 					Session.Stop()
 					Session.Seek(TimeAt(Input.Position.X))
-					StartDrag("Scrub", Input.Position.X, Session.Time())
+					StartDrag("Scrub", Input.Position.X, Input.Position.Y, Session.Time())
 				end,
 
 				Vide.action(function(Object: Frame)
@@ -610,10 +953,25 @@ return function()
 						},
 					}
 				end),
+				Vide.indexes(Problems, function(Problem)
+					return Create "Frame" {
+						Name = "Problem",
+						AnchorPoint = Vector2.new(0.5, 0),
+						Position = function()
+							return UDim2.fromOffset(XOf(Problem().Time or 0), 0)
+						end,
+						Size = UDim2.new(0, 3, 1, 0),
+						BackgroundColor3 = Theme.Colors.Error,
+						Visible = function()
+							return Problem().Time ~= nil
+						end,
+						ZIndex = 3,
+					}
+				end),
 				Create "Frame" {
 					Name = "End",
 					Position = function()
-						return UDim2.fromOffset(XOf(Session.Current().Length), 0)
+						return UDim2.fromOffset(XOf(Session.SceneLength()), 0)
 					end,
 					Size = UDim2.new(0, 1, 1, 0),
 					BackgroundColor3 = Theme.Colors.Accent,
@@ -661,13 +1019,11 @@ return function()
 					OnClick = function()
 						const Time = Session.SnapTime(Session.Time())
 
-						const Marker = {
+						Session.Edit(Clip.SetMarker(Session.Current(), {
 							Time = Time,
 							Name = "Event",
 							Value = "",
-						}
-
-						Session.Edit(Clip.SetMarker(Session.Current(), Marker))
+						}))
 						Session.SelectedMarker(Clip.FindMarker(Session.Current(), Time, "Event"))
 					end,
 				}
@@ -682,7 +1038,7 @@ return function()
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 						Session.SelectedMarker(nil)
 						Session.Seek(TimeAt(Input.Position.X))
-						StartDrag("Scrub", Input.Position.X, Session.Time())
+						StartDrag("Scrub", Input.Position.X, Input.Position.Y, Session.Time())
 					elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 						LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), nil)
 					end
@@ -706,7 +1062,7 @@ return function()
 							if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 								Session.SelectedMarker(Marker)
 								Session.Seek(Marker.Time)
-								StartDrag("Marker", Input.Position.X, Marker.Time, Marker)
+								StartDrag("Marker", Input.Position.X, Input.Position.Y, Marker.Time, Marker)
 							elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
 								Session.SelectedMarker(Marker)
 								Overlay.MenuAt(Vector2.new(Input.Position.X, Input.Position.Y), {{
@@ -750,83 +1106,7 @@ return function()
 		}
 	end
 
-	const function Summary()
-		return Create "Frame" {
-			Name = "Summary",
-			Size = function()
-				return UDim2.new(1, 0, 0, RowHeight())
-			end,
-			BackgroundColor3 = Theme.Colors.Panel,
-			LayoutOrder = 3,
-
-			Create "UIListLayout" {
-				FillDirection = Enum.FillDirection.Horizontal,
-				SortOrder = Enum.SortOrder.LayoutOrder,
-			},
-			NameCell(1,
-				Create "TextLabel" {
-					Position = UDim2.fromOffset(8, 0),
-					Size = UDim2.new(1, -12, 1, 0),
-					BackgroundTransparency = 1,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextColor3 = Theme.Colors.Text,
-					TextSize = Settings.TextSize,
-					FontFace = Font.fromEnum(Enum.Font.BuilderSansMedium),
-					ZIndex = 4,
-					Text = "All joints",
-				}
-			),
-			Create "Frame" {
-				Name = "Lane",
-				Size = UDim2.new(1, -NameWidth, 1, 0),
-				BackgroundTransparency = 1,
-				LayoutOrder = 2,
-				ClipsDescendants = true,
-				InputBegan = function(Input: InputObject)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-						Session.SelectedKeys({})
-						Session.Seek(TimeAt(Input.Position.X))
-						StartDrag("Scrub", Input.Position.X, Session.Time())
-					elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
-						LaneMenu(Vector2.new(Input.Position.X, Input.Position.Y), nil)
-					end
-				end,
-
-				Vide.indexes(function()
-					return Clip.KeyTimes(Session.Current())
-				end, function(Time)
-					return Diamond {
-						Time = Time,
-						Selected = function()
-							for _, Ref in Session.SelectedKeys() do
-								if math.abs(Ref.Time - Time()) < 0.0005 then
-									return true
-								end
-							end
-
-							return false
-						end,
-						OnDown = function(Shift: boolean, X: number)
-							Session.SelectColumn(Time(), Shift)
-							Session.Seek(Time())
-							StartDrag("Keys", X, Time())
-						end,
-						OnMenu = function(Position: Vector2)
-							Session.SelectColumn(Time(), false)
-
-							const First = Session.SelectedKeys()[1]
-
-							if First then
-								KeyMenu(Position, First.Joint, First.Time)
-							end
-						end,
-					}
-				end),
-			},
-		}
-	end
-
-	const function OnMove(X: number)
+	const function OnMove(X: number, Y: number)
 		const Active = Drag
 
 		if not Active then
@@ -835,6 +1115,18 @@ return function()
 
 		if Active.Kind == "Scrub" then
 			Session.Seek(TimeAt(X))
+
+			return
+		end
+
+		if Active.Kind == "Box" then
+			if math.abs(X - Active.StartX) > 4 or math.abs(Y - Active.StartY) > 4 then
+				Active.Moved = true
+				Box({
+					From = Vector2.new(Active.StartX, Active.StartY),
+					To = Vector2.new(X, Y),
+				})
+			end
 
 			return
 		end
@@ -881,7 +1173,7 @@ return function()
 		ClipsDescendants = true,
 		InputChanged = function(Input: InputObject)
 			if Input.UserInputType == Enum.UserInputType.MouseMovement then
-				OnMove(Input.Position.X)
+				OnMove(Input.Position.X, Input.Position.Y)
 			elseif Input.UserInputType == Enum.UserInputType.MouseWheel and Input.Position.X >= LaneLeft() then
 				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
 					const Under = TimeAt(Input.Position.X)
@@ -892,7 +1184,7 @@ return function()
 					Offset(math.max(0, Under - (Input.Position.X - LaneLeft() - LanePadding) / Scaled))
 				elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
 					UserZoomed(true)
-					Offset(math.clamp(Offset() - Input.Position.Z * 40 / Zoom(), 0, math.max(0, Session.Current().Length - (LaneWidth() - LanePadding * 2) / Zoom())))
+					Offset(math.clamp(Offset() - Input.Position.Z * 40 / Zoom(), 0, math.max(0, Session.SceneLength() - (LaneWidth() - LanePadding * 2) / Zoom())))
 				end
 			end
 		end,
@@ -918,26 +1210,66 @@ return function()
 			Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
 			Header(),
 			Events(),
-			Summary(),
 			Create "ScrollingFrame" {
 				Name = "Rows",
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
-				LayoutOrder = 4,
+				LayoutOrder = 3,
 				AutomaticCanvasSize = Enum.AutomaticSize.Y,
 				CanvasSize = UDim2.new(),
 				ScrollBarThickness = 6,
 				ScrollBarImageColor3 = Theme.Colors.DimText,
 				ScrollingDirection = Enum.ScrollingDirection.Y,
+				Visible = function()
+					return Session.View() == "Sheet"
+				end,
 
 				Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
 				Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
 
-				Vide.values(VisibleJoints, function(Joint: Rig.Joint, Index)
-					return Row(Joint, Index)
+				Vide.values(Rows, function(Entry: RowEntry, Index)
+					return Row(Entry, Index)
 				end),
 			},
+			CurveView {
+				XOf = XOf,
+				TimeAt = TimeAt,
+				NameWidth = NameWidth,
+				LaneWidth = LaneWidth,
+				Visible = function()
+					return Session.View() == "Curves"
+				end,
+			},
+		},
+		Create "Frame" {
+			Name = "Box",
+			BackgroundColor3 = Theme.Colors.Accent,
+			BackgroundTransparency = 0.8,
+			ZIndex = 30,
+			Visible = function()
+				return Box() ~= nil
+			end,
+			Position = function()
+				const Current = Box()
+
+				if not Current then
+					return UDim2.new()
+				end
+
+				return UDim2.fromOffset(math.min(Current.From.X, Current.To.X) - Root.AbsolutePosition.X, math.min(Current.From.Y, Current.To.Y) - Root.AbsolutePosition.Y)
+			end,
+			Size = function()
+				const Current = Box()
+
+				if not Current then
+					return UDim2.new()
+				end
+
+				return UDim2.fromOffset(math.abs(Current.To.X - Current.From.X), math.abs(Current.To.Y - Current.From.Y))
+			end,
+
+			Create "UIStroke" {Color = Theme.Colors.Accent},
 		},
 		Playhead(),
 	}

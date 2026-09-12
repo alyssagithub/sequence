@@ -1,16 +1,42 @@
 --!strict
+const Selection = game:GetService("Selection")
 const Vide = require(script.Parent.Parent.Parent.Packages.vide)
 const Sift = require(script.Parent.Parent.Parent.Packages.sift)
 const Settings = require(script.Parent.Parent.Parent.Settings)
 const Format = require(script.Parent.Parent.Parent.Format)
 const Theme = require(script.Parent.Parent.Theme)
+const Overlay = require(script.Parent.Parent.Overlay)
 const Session = require(script.Parent.Parent.Parent.Editor.Session)
 const Clip = require(script.Parent.Parent.Parent.Editor.Clip)
+const PoseTool = require(script.Parent.Parent.Parent.Editor.PoseTool)
+const Playtest = require(script.Parent.Parent.Parent.Editor.Playtest)
+const Bake = require(script.Parent.Parent.Parent.Editor.Bake)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
 const Dropdown = require(script.Parent.Parent.Components.Dropdown)
 const NumberField = require(script.Parent.Parent.Components.NumberField)
 
 const Create = Vide.create
+
+const Properties = {
+	"Transparency",
+	"Color",
+	"Size",
+	"CFrame",
+	"Position",
+	"Orientation",
+	"Reflectance",
+	"Brightness",
+	"Range",
+	"Enabled",
+	"Value",
+	"Volume",
+	"PlaybackSpeed",
+	"TextTransparency",
+	"ImageTransparency",
+	"BackgroundTransparency",
+	"Rotation",
+	"FieldOfView",
+}
 
 const function Label(Text: string, Order: number)
 	return Create "TextLabel" {
@@ -34,9 +60,95 @@ const function Divider(Order: number)
 	}
 end
 
+const function PropertyMenu(Anchor: GuiObject)
+	const Picked = Selection:Get()[1]
+
+	if not Picked then
+		Session.Say("Select the object to animate in the Explorer first")
+
+		return
+	end
+
+	const Entries: {Overlay.Entry} = {}
+
+	for _, Property in Properties do
+		const Ok = pcall(function()
+			return (Picked :: any)[Property]
+		end)
+
+		if Ok then
+			table.insert(Entries, {
+				Label = `{Picked.Name}.{Property}`,
+				Action = function()
+					if Session.AddPropertyTrack(Picked, Property) then
+						Session.Say(`Keyframe {Picked.Name}.{Property} by changing it in the Properties window, then pressing its diamond`)
+					end
+				end,
+			})
+		end
+	end
+
+	if #Entries == 0 then
+		table.insert(Entries, {
+			Label = `{Picked.Name} has nothing here to animate`,
+			Disabled = true,
+		})
+	end
+
+	Overlay.Menu(Anchor, Entries, 240)
+end
+
+const function BakeMenu(Anchor: GuiObject)
+	const Loaded = Session.Rig()
+
+	if not Loaded then
+		return
+	end
+
+	Overlay.Menu(Anchor, {
+		{
+			Label = "Bake this pose as a frozen copy",
+			Action = function()
+				Bake.Place(Loaded, Session.Current(), {Session.Time()})
+				Session.Say("A posed copy of the rig was placed beside it and selected")
+			end,
+		},
+		{
+			Label = "Bake every keyframe as a copy",
+			Action = function()
+				const Times = Clip.KeyTimes(Session.Current())
+
+				Bake.Place(Loaded, Session.Current(), Times)
+				Session.Say(`{#Times} posed copies were placed beside the rig`)
+			end,
+		},
+	}, 260)
+end
+
 return function()
+	local PropertyAnchor: GuiObject
+	local BakeAnchor: GuiObject
+
 	const function NoRig(): boolean
 		return Session.Rig() == nil
+	end
+
+	const function Anchored(Name: string, Order: number, Button: Instance, Set: (GuiObject) -> ())
+		return Create "TextButton" {
+			Name = Name,
+			Size = function()
+				return UDim2.fromOffset(Settings.TextSize() + 12, Settings.TextSize() + 8)
+			end,
+			BackgroundTransparency = 1,
+			Text = "",
+			LayoutOrder = Order,
+
+			Vide.action(function(Object: TextButton)
+				Set(Object)
+			end),
+
+			Button,
+		}
 	end
 
 	return Create "Frame" {
@@ -102,7 +214,7 @@ return function()
 			Disabled = NoRig,
 			OnClick = function()
 				Session.Stop()
-				Session.Time(Session.Current().Length)
+				Session.Time(Session.SceneLength())
 			end,
 		},
 		Create "TextLabel" {
@@ -132,7 +244,7 @@ return function()
 			Disabled = NoRig,
 			OnChange = function(Length: number)
 				Session.Edit(Clip.SetLength(Session.Current(), Length))
-				Session.Time(math.min(Session.Time(), Length))
+				Session.Time(math.min(Session.Time(), Session.Current().Length))
 			end,
 		},
 		Label("Rate", 10),
@@ -213,9 +325,17 @@ return function()
 			Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
 		},
 		IconButton {
+			Icon = "hand",
+			Tooltip = "Pose tool: click a part in the viewport and drag to turn it (Escape to leave)",
+			LayoutOrder = 19,
+			Disabled = NoRig,
+			Active = PoseTool.Active,
+			OnClick = PoseTool.Toggle,
+		},
+		IconButton {
 			Icon = "rotate-3d",
 			Tooltip = "Rotate joints (R)",
-			LayoutOrder = 19,
+			LayoutOrder = 20,
 			Disabled = NoRig,
 			Active = function()
 				return Session.Tool() == "Rotate"
@@ -227,7 +347,7 @@ return function()
 		IconButton {
 			Icon = "move-3d",
 			Tooltip = "Move joints (T)",
-			LayoutOrder = 20,
+			LayoutOrder = 21,
 			Disabled = NoRig,
 			Active = function()
 				return Session.Tool() == "Move"
@@ -237,24 +357,82 @@ return function()
 			end,
 		},
 		IconButton {
+			Icon = "key-round",
+			Tooltip = function()
+				return if Session.AutoKey() then "Auto key is on, every pose change writes a keyframe" else "Auto key is off, pose freely then press K to keep it"
+			end,
+			LayoutOrder = 22,
+			Disabled = NoRig,
+			Active = Session.AutoKey,
+			OnClick = function()
+				if Session.AutoKey() then
+					Session.AutoKey(false)
+				else
+					Session.CommitScratch()
+					Session.AutoKey(true)
+				end
+			end,
+		},
+		IconButton {
+			Icon = "flip-horizontal-2",
+			Tooltip = "Mirror the pose left to right at the playhead",
+			LayoutOrder = 23,
+			Disabled = NoRig,
+			OnClick = function()
+				Session.MirrorPose(nil)
+			end,
+		},
+		IconButton {
 			Icon = "ghost",
 			Tooltip = "Onion skin",
-			LayoutOrder = 21,
+			LayoutOrder = 24,
 			Disabled = NoRig,
 			Active = Session.OnionSkin,
 			OnClick = function()
 				Session.OnionSkin(not Session.OnionSkin())
 			end,
 		},
-		Divider(22),
+		Divider(25),
+		Anchored("PropertyAnchor", 26, IconButton {
+			Icon = "sliders-horizontal",
+			Tooltip = "Animate a property of the selected object",
+			Disabled = NoRig,
+			OnClick = function()
+				PropertyMenu(PropertyAnchor)
+			end,
+		}, function(Object: GuiObject)
+			PropertyAnchor = Object
+		end),
 		IconButton {
 			Icon = "diamond",
 			Tooltip = "Add keyframe for the selected joint, or every joint (K)",
-			LayoutOrder = 23,
+			LayoutOrder = 27,
 			Disabled = NoRig,
 			OnClick = function()
+				Session.CommitScratch()
 				Session.KeyAll()
 			end,
 		},
+		Divider(28),
+		IconButton {
+			Icon = "gamepad-2",
+			Tooltip = function()
+				return if Playtest.Ready() then "Playtest scripts are in place, press Play in Studio. Click to remove them" else "Set up a playtest that plays this on your character without uploading"
+			end,
+			LayoutOrder = 29,
+			Disabled = NoRig,
+			Active = Playtest.Ready,
+			OnClick = Playtest.Toggle,
+		},
+		Anchored("BakeAnchor", 30, IconButton {
+			Icon = "snowflake",
+			Tooltip = "Bake a frozen posed copy of the rig",
+			Disabled = NoRig,
+			OnClick = function()
+				BakeMenu(BakeAnchor)
+			end,
+		}, function(Object: GuiObject)
+			BakeAnchor = Object
+		end),
 	}
 end

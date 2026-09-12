@@ -4,12 +4,16 @@ const Easing = require(script.Parent.Easing)
 
 export type Key = {
 	Time: number,
-	Value: CFrame,
+	Value: any,
 	EasingStyle: Easing.Style,
 	EasingDirection: Easing.Direction,
 }
 
-export type Track = {Keys: {Key}}
+export type Track = {
+	Keys: {Key},
+	Object: Instance?,
+	Property: string?,
+}
 
 export type Marker = {
 	Time: number,
@@ -53,8 +57,16 @@ const function ByTime(A: {Time: number}, B: {Time: number}): boolean
 	return A.Time < B.Time
 end
 
-function Clip.FindKey(Current: Clip, JointName: string, Time: number): (Key?, number?)
-	const Track = Current.Tracks[JointName]
+function Clip.IsProperty(Name: string): boolean
+	return Name:sub(1, 1) == "@"
+end
+
+function Clip.PropertyTrackName(Object: Instance, Property: string): string
+	return `@{Object:GetDebugId()}.{Property}`
+end
+
+function Clip.FindKey(Current: Clip, TrackName: string, Time: number): (Key?, number?)
+	const Track = Current.Tracks[TrackName]
 
 	if not Track then
 		return nil, nil
@@ -69,39 +81,50 @@ function Clip.FindKey(Current: Clip, JointName: string, Time: number): (Key?, nu
 	return nil, nil
 end
 
-function Clip.SetKey(Current: Clip, JointName: string, Key: Key): Clip
-	const Track = Current.Tracks[JointName] or {Keys = {}}
-	const Existing, Index = Clip.FindKey(Current, JointName, Key.Time)
+function Clip.SetKey(Current: Clip, TrackName: string, Key: Key, Object: Instance?, Property: string?): Clip
+	const Track = Current.Tracks[TrackName] or {
+		Keys = {},
+		Object = Object,
+		Property = Property,
+	}
+	const Existing, Index = Clip.FindKey(Current, TrackName, Key.Time)
 	const Keys = if Index then Sift.Array.set(Track.Keys, Index, Sift.Dictionary.merge(Existing, Key)) else Sift.Array.sort(Sift.Array.push(Track.Keys, Key), ByTime)
 
 	return Sift.Dictionary.merge(Current, {
-		Tracks = Sift.Dictionary.set(Current.Tracks, JointName, {Keys = Keys}),
+		Tracks = Sift.Dictionary.set(Current.Tracks, TrackName, Sift.Dictionary.merge(Track, {Keys = Keys})),
 		Length = math.max(Current.Length, Key.Time),
 	})
 end
 
-function Clip.RemoveKey(Current: Clip, JointName: string, Time: number): Clip
-	const _, Index = Clip.FindKey(Current, JointName, Time)
+function Clip.RemoveKey(Current: Clip, TrackName: string, Time: number): Clip
+	const _, Index = Clip.FindKey(Current, TrackName, Time)
 
 	if not Index then
 		return Current
 	end
 
-	const Keys = Sift.Array.removeIndex(Current.Tracks[JointName].Keys, Index)
+	const Track = Current.Tracks[TrackName]
+	const Keys = Sift.Array.removeIndex(Track.Keys, Index)
 
 	return Sift.Dictionary.merge(Current, {
-		Tracks = if #Keys == 0 then Sift.Dictionary.removeKey(Current.Tracks, JointName) else Sift.Dictionary.set(Current.Tracks, JointName, {Keys = Keys}),
+		Tracks = if #Keys == 0 then Sift.Dictionary.removeKey(Current.Tracks, TrackName) else Sift.Dictionary.set(Current.Tracks, TrackName, Sift.Dictionary.merge(Track, {Keys = Keys})),
 	})
 end
 
-function Clip.MoveKey(Current: Clip, JointName: string, Time: number, NewTime: number): Clip
-	const Key = Clip.FindKey(Current, JointName, Time)
+function Clip.RemoveTrack(Current: Clip, TrackName: string): Clip
+	return Sift.Dictionary.merge(Current, {Tracks = Sift.Dictionary.removeKey(Current.Tracks, TrackName)})
+end
 
-	if not Key or Time == NewTime or Clip.FindKey(Current, JointName, NewTime) then
+function Clip.MoveKey(Current: Clip, TrackName: string, Time: number, NewTime: number): Clip
+	const Key = Clip.FindKey(Current, TrackName, Time)
+
+	if not Key or Time == NewTime or Clip.FindKey(Current, TrackName, NewTime) then
 		return Current
 	end
 
-	return Clip.SetKey(Clip.RemoveKey(Current, JointName, Time), JointName, Sift.Dictionary.merge(Key, {Time = NewTime}))
+	const Track = Current.Tracks[TrackName]
+
+	return Clip.SetKey(Clip.RemoveKey(Current, TrackName, Time), TrackName, Sift.Dictionary.merge(Key, {Time = NewTime}), Track.Object, Track.Property)
 end
 
 function Clip.KeyTimes(Current: Clip): {number}
@@ -170,6 +193,38 @@ end
 
 function Clip.SetLength(Current: Clip, Length: number): Clip
 	return Sift.Dictionary.merge(Current, {Length = math.max(Length, Clip.LastTime(Current))})
+end
+
+function Clip.Scale(Current: Clip, Factor: number): Clip
+	const Tracks = {}
+
+	for Name, Track in Current.Tracks do
+		Tracks[Name] = Sift.Dictionary.merge(Track, {
+			Keys = Sift.Array.map(Track.Keys, function(Key: Key)
+				return Sift.Dictionary.merge(Key, {Time = Key.Time * Factor})
+			end),
+		})
+	end
+
+	return Sift.Dictionary.merge(Current, {
+		Length = Current.Length * Factor,
+		Tracks = Tracks,
+		Markers = Sift.Array.map(Current.Markers, function(Marker: Marker)
+			return Sift.Dictionary.merge(Marker, {Time = Marker.Time * Factor})
+		end),
+	})
+end
+
+function Clip.JointTracks(Current: Clip): {[string]: Track}
+	const Found = {}
+
+	for Name, Track in Current.Tracks do
+		if not Clip.IsProperty(Name) then
+			Found[Name] = Track
+		end
+	end
+
+	return Found
 end
 
 return Clip

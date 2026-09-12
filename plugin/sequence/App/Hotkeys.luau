@@ -35,7 +35,18 @@ function Hotkeys.Handle(Input: InputObject)
 	if Key == Enum.KeyCode.Space then
 		Session.TogglePlay()
 	elseif Key == Enum.KeyCode.K then
+		Session.CommitScratch()
 		Session.KeyAll()
+	elseif Key == Enum.KeyCode.P and not Control then
+		const Name = Session.SelectedJoint()
+
+		if Name then
+			Session.TogglePin(Name)
+		end
+	elseif Key == Enum.KeyCode.M and Shift then
+		Session.MirrorPose(nil)
+	elseif Key == Enum.KeyCode.Tab then
+		Session.View(if Session.View() == "Curves" then "Sheet" else "Curves")
 	elseif Key == Enum.KeyCode.Delete then
 		Session.DeleteSelectedKeys()
 	elseif Key == Enum.KeyCode.Left then

@@ -181,6 +181,11 @@ function Testing.Mount(CurrentPlugin: Plugin): string
 end
 
 function Testing.Hide(): string
+	if _G.SequenceShotUnmount then
+		pcall(_G.SequenceShotUnmount)
+		_G.SequenceShotUnmount = nil
+	end
+
 	const Staged = workspace:FindFirstChild("SequenceShotStage")
 
 	if Staged then
@@ -218,7 +223,7 @@ function Testing.Hide(): string
 	return "Cleared the stage and put the camera back"
 end
 
-function Testing.Show(Name: string?, Wanted: number?, WantedHeight: number?): string
+function Testing.Show(Name: string?, Wanted: number?, WantedHeight: number?, Live: boolean?): string
 	Testing.Hide()
 
 	const Widget = PluginGuiService:FindFirstChild("SequenceTestWidget")
@@ -328,17 +333,35 @@ function Testing.Show(Name: string?, Wanted: number?, WantedHeight: number?): st
 	Surface.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	Surface.Parent = Screen
 
-	const Copy = Shown:Clone()
+	local Copy: GuiObject
 
-	Copy.Position = UDim2.fromOffset(0, 0)
-	Copy.Size = UDim2.fromOffset(Width, Height)
-	Copy.AnchorPoint = Vector2.zero
-	Copy.Visible = true
-	Copy.Parent = Surface
+	if Live then
+		const Mounted = Beside()
+		const Vide = Import((Mounted :: any).Packages.vide)
+		const Holder = Instance.new("Frame")
+
+		Holder.Name = Shown.Name
+		Holder.Size = UDim2.fromOffset(Width, Height)
+		Holder.BackgroundTransparency = 1
+		Holder.Parent = Surface
+		_G.SequenceShotUnmount = Vide.mount(Import((Mounted :: any).App.Pages.Main), Holder)
+		Copy = Holder
+	else
+		Copy = Shown:Clone()
+		Copy.Position = UDim2.fromOffset(0, 0)
+		Copy.Size = UDim2.fromOffset(Width, Height)
+		Copy.AnchorPoint = Vector2.zero
+		Copy.Visible = true
+		Copy.Parent = Surface
+	end
 
 	const Scrolled = Shown:GetDescendants()
 
 	const function MatchScroll()
+		if Live then
+			return
+		end
+
 		for Index, Object in Copy:GetDescendants() do
 			if Object:IsA("ScrollingFrame") and Scrolled[Index]:IsA("ScrollingFrame") then
 				Object.CanvasPosition = (Scrolled[Index] :: ScrollingFrame).CanvasPosition

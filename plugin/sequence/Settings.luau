@@ -23,6 +23,25 @@ const Definitions: {Definition} = {
 		Minimum = 10,
 		Maximum = 22,
 	},
+	{
+		Key = "SaveLocation",
+		Label = "Save location",
+		Detail = "",
+		Group = "Saving",
+		Default = "Rig",
+		Options = {
+			"Rig",
+			"Roblox",
+			"Moon",
+		},
+	},
+	{
+		Key = "SaveAsCurve",
+		Label = "Save as curves",
+		Detail = "",
+		Group = "Saving",
+		Default = false,
+	},
 }
 
 const Sources: {[string]: any} = {}

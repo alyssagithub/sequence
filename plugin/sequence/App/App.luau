@@ -8,6 +8,9 @@ const Main = require(script.Parent.Pages.Main)
 const Session = require(script.Parent.Parent.Editor.Session)
 const Gizmo = require(script.Parent.Parent.Editor.Gizmo)
 const OnionSkin = require(script.Parent.Parent.Editor.OnionSkin)
+const PoseTool = require(script.Parent.Parent.Editor.PoseTool)
+const Playtest = require(script.Parent.Parent.Editor.Playtest)
+const Reference = require(script.Parent.Parent.Editor.Reference)
 
 const App = {}
 
@@ -29,6 +32,7 @@ function App.New(CurrentPlugin: Plugin)
 		Session.Start(CurrentPlugin)
 		Gizmo.Start()
 		OnionSkin.Start()
+		Playtest.Refresh()
 	end)
 
 	const Unmount = Vide.mount(Main, Window)
@@ -41,6 +45,9 @@ function App.New(CurrentPlugin: Plugin)
 			Session.Destroy()
 			Gizmo.Destroy()
 			OnionSkin.Destroy()
+			PoseTool.Destroy()
+			Playtest.Destroy()
+			Reference.Destroy()
 
 			if RunService:IsRunning() then
 				Window.Enabled = false

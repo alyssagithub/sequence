@@ -206,6 +206,32 @@ return function()
 				OnClick = function()
 					WriteTransform(CFrame.identity)
 				end,
+			},
+			Button {
+				Text = "Mirror",
+				LayoutOrder = 11,
+				OnClick = function()
+					const Name = Session.SelectedJoint()
+
+					if Name then
+						Session.MirrorPose({Name})
+					end
+				end,
+			},
+			Button {
+				Text = function()
+					const Name = Session.SelectedJoint()
+
+					return if Name and Session.Pins()[Name] then "Unpin" else "Pin"
+				end,
+				LayoutOrder = 12,
+				OnClick = function()
+					const Name = Session.SelectedJoint()
+
+					if Name then
+						Session.TogglePin(Name)
+					end
+				end,
 			}
 		),
 		Strip("Keys", 3, ShowKeys,
@@ -245,7 +271,7 @@ return function()
 				Disabled = function()
 					const Key = FirstKey()
 
-					return Key == nil or Key.EasingStyle == "Linear" or Key.EasingStyle == "Constant"
+					return Key == nil or Key.EasingStyle == "Linear" or Key.EasingStyle == "Constant" or Key.EasingStyle == "Smooth"
 				end,
 				OnChange = function(Direction: string)
 					Session.SetSelectedEasing(nil, Direction)
@@ -271,10 +297,28 @@ return function()
 					end
 				end,
 			},
+			Label("Span", 7),
+			NumberField {
+				Value = function()
+					const Lowest, Highest = Session.SelectionSpan()
+
+					return if Highest > Lowest then Highest - Lowest else 0
+				end,
+				Minimum = 0,
+				Width = 64,
+				Suffix = "s",
+				LayoutOrder = 8,
+				Disabled = function()
+					return #Session.SelectedKeys() < 2
+				end,
+				OnChange = function(Span: number)
+					Session.ScaleSelectedKeys(Span)
+				end,
+			},
 			Button {
 				Text = "Delete",
 				Danger = true,
-				LayoutOrder = 7,
+				LayoutOrder = 9,
 				OnClick = Session.DeleteSelectedKeys,
 			}
 		),

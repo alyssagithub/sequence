@@ -7,10 +7,12 @@ def Item(cls, name, props, children):
     Ref[0] += 1
     p = "".join(props)
     return f'<Item class="{cls}" referent="RBX{Ref[0]}"><Properties><string name="Name">{escape(name)}</string>{p}</Properties>{"".join(children)}</Item>'
-def Script(cls, name, src, children):
+def Script(cls, name, src, children, extra=None):
     props = [f'<ProtectedString name="Source"><![CDATA[{src}]]></ProtectedString>']
     if cls == "Script":
         props.append('<token name="RunContext">0</token>')
+    for k, v in (extra or {}).items():
+        props.append(PropXml(k, v))
     return Item(cls, name, props, children)
 def ClassFor(f):
     base = f[:-5]
@@ -35,17 +37,22 @@ def Emit(disk, name):
     entries = sorted(os.listdir(disk))
     files = [e for e in entries if os.path.isfile(os.path.join(disk, e)) and e.endswith(".luau")]
     models = [e for e in entries if e.endswith(".model.json")]
+    fragments = [e for e in entries if e.endswith(".fragment.xml")]
     dirs = [e for e in entries if os.path.isdir(os.path.join(disk, e))]
     inits = [f for f in files if f.startswith("init.")]
     children = []
     for f in files:
         if f in inits: continue
         n, cls = ClassFor(f)
-        children.append(Script(cls, n, open(os.path.join(disk, f), encoding="utf-8").read(), []))
+        meta = os.path.join(disk, n + ".meta.json")
+        extra = json.load(open(meta, encoding="utf-8")).get("properties") if os.path.exists(meta) else None
+        children.append(Script(cls, n, open(os.path.join(disk, f), encoding="utf-8").read(), [], extra))
     for d in dirs:
         children.append(Emit(os.path.join(disk, d), d))
     for m in models:
         children.append(Model(json.load(open(os.path.join(disk, m), encoding="utf-8")), m[:-11]))
+    for f in fragments:
+        children.append(open(os.path.join(disk, f), encoding="utf-8").read())
     if inits:
         _, cls = ClassFor(inits[0])
         return Script(cls, name, open(os.path.join(disk, inits[0]), encoding="utf-8").read(), children)
