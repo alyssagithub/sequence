@@ -37,7 +37,7 @@ const Session = {
 	Playing = Vide.source(false),
 	Speed = Vide.source(1),
 	FrameRate = Vide.source(30),
-	Snap = Vide.source(true),
+	Snap = Vide.source("Frames" :: "Off" | "Frames" | "Keys"),
 	SelectedJoint = Vide.source(nil :: string?),
 	SelectedKeys = Vide.source({} :: {KeyRef}),
 	Clipboard = Vide.source({} :: {{Joint: string, Offset: number, Key: Clip.Key}}),
@@ -113,16 +113,39 @@ end
 
 function Session.SnapTime(Time: number): number
 	const Clamped = math.clamp(Time, 0, Session.SceneLength())
+	const Mode = Session.Snap()
 
-	if not Session.Snap() then
+	if Mode == "Off" then
 		return Clamped
+	end
+
+	const Frame = 1 / Session.FrameRate()
+
+	if Mode == "Keys" then
+		local Nearest: number?
+
+		for _, KeyTime in Clip.KeyTimes(Session.Current()) do
+			if math.abs(KeyTime - Clamped) <= Frame * 1.5 and (not Nearest or math.abs(KeyTime - Clamped) < math.abs(Nearest - Clamped)) then
+				Nearest = KeyTime
+			end
+		end
+
+		for _, Marker in Session.Current().Markers do
+			if math.abs(Marker.Time - Clamped) <= Frame * 1.5 and (not Nearest or math.abs(Marker.Time - Clamped) < math.abs(Nearest - Clamped)) then
+				Nearest = Marker.Time
+			end
+		end
+
+		if Nearest then
+			return Nearest
+		end
 	end
 
 	return math.round(Clamped * Session.FrameRate()) / Session.FrameRate()
 end
 
 function Session.ToFrame(Time: number): number
-	if not Session.Snap() then
+	if Session.Snap() == "Off" then
 		return math.max(0, Time)
 	end
 

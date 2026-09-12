@@ -15,7 +15,6 @@ const Playtest = require(script.Parent.Parent.Parent.Editor.Playtest)
 const Bake = require(script.Parent.Parent.Parent.Editor.Bake)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
 const TextField = require(script.Parent.Parent.Components.TextField)
-const Icon = require(script.Parent.Parent.Components.Icon)
 
 const Create = Vide.create
 
@@ -310,6 +309,35 @@ const function BakeEntries(): {Overlay.Entry}?
 end
 
 
+const function SnapEntries(): {Overlay.Entry}?
+	const Entries: {Overlay.Entry} = {}
+
+	for _, Mode in {"Off", "Frames", "Keys"} do
+		table.insert(Entries, {
+			Label = if Mode == "Keys" then "Snap to keyframes and frames" elseif Mode == "Frames" then "Snap to frames" else "No snapping",
+			Checked = Session.Snap() == Mode,
+			Action = function()
+				Session.Snap(Mode)
+			end,
+		})
+	end
+
+	table.insert(Entries, {Label = "", Divider = true})
+
+	for _, Rate in {24, 30, 60} do
+		table.insert(Entries, {
+			Label = `{Rate} frames per second`,
+			Checked = Session.FrameRate() == Rate,
+			Action = function()
+				Session.FrameRate(Rate)
+				Settings.Set("FrameRate", Rate)
+			end,
+		})
+	end
+
+	return Entries
+end
+
 const function Sub(Label: string, Entries: () -> {Overlay.Entry}?, Anchor: () -> GuiObject): Overlay.Entry
 	return {
 		Label = `{Label}  ›`,
@@ -377,13 +405,7 @@ return function()
 					Session.Edit(Sift.Dictionary.merge(Session.Current(), {Looping = not Session.Current().Looping}))
 				end,
 			},
-			{
-				Label = "Snap to frames",
-				Checked = Session.Snap(),
-				Action = function()
-					Session.Snap(not Session.Snap())
-				end,
-			},
+			Sub("Snap", SnapEntries, Anchor),
 			{Label = "", Divider = true},
 			{
 				Label = "Mirror pose",
@@ -464,73 +486,32 @@ return function()
 		}, 260)
 	end
 
-	const function Row(Name: string, Order: number, ...: Instance)
-		return Create "Frame" {
-			Name = Name,
-			Size = UDim2.new(1, 0, 0, 24),
-			BackgroundTransparency = 1,
-			LayoutOrder = Order,
+	const Rail = Create "Frame" {
+		Name = "Rail",
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.new(0, 0, 1, 0),
+		BackgroundColor3 = Theme.Colors.Panel,
+		LayoutOrder = 0,
+		ZIndex = 5,
 
-			Create "UIPadding" {
-				PaddingLeft = UDim.new(0, 4),
-				PaddingRight = UDim.new(0, 4),
-			},
-			Create "UIListLayout" {
-				FillDirection = Enum.FillDirection.Horizontal,
-				VerticalAlignment = Enum.VerticalAlignment.Center,
-				Padding = UDim.new(0, 2),
-				SortOrder = Enum.SortOrder.LayoutOrder,
-			},
-			...,
-		}
-	end
-
-	const Sidebar = Create "Frame" {
-		Name = "Sidebar",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-
-		Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
-		Row("First", 1,
-		Create "TextButton" {
-			Name = "InsertButton",
-			AutomaticSize = Enum.AutomaticSize.X,
-			Size = function()
-				return UDim2.fromOffset(0, Settings.TextSize() + 8)
-			end,
-			BackgroundColor3 = Theme.Colors.Button,
-			Text = "",
-			AutoButtonColor = true,
+		Create "UIPadding" {
+			PaddingLeft = UDim.new(0, 3),
+			PaddingRight = UDim.new(0, 3),
+			PaddingTop = UDim.new(0, 3),
+		},
+		Create "UIGridLayout" {
+			CellSize = UDim2.fromOffset(24, 24),
+			CellPadding = UDim2.fromOffset(2, 1),
+			FillDirection = Enum.FillDirection.Vertical,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		},
+		IconButton {
+			Icon = "person-standing",
+			Tooltip = "Insert a character",
 			LayoutOrder = 1,
-			Activated = function()
+			OnClick = function()
 				Session.Panel("Insert")
 			end,
-
-			Create "UICorner" {CornerRadius = UDim.new(0, 4)},
-			Create "UIPadding" {
-				PaddingLeft = UDim.new(0, 8),
-				PaddingRight = UDim.new(0, 8),
-			},
-			Create "UIListLayout" {
-				FillDirection = Enum.FillDirection.Horizontal,
-				VerticalAlignment = Enum.VerticalAlignment.Center,
-				Padding = UDim.new(0, 6),
-			},
-			Icon {
-				Name = "person-standing",
-				Colour = Theme.Colors.ButtonText,
-				LayoutOrder = 1,
-			},
-			Create "TextLabel" {
-				AutomaticSize = Enum.AutomaticSize.X,
-				Size = UDim2.fromScale(0, 1),
-				BackgroundTransparency = 1,
-				TextColor3 = Theme.Colors.ButtonText,
-				TextSize = Settings.TextSize,
-				FontFace = Font.fromEnum(Enum.Font.BuilderSansMedium),
-				LayoutOrder = 2,
-				Text = "Insert",
-			},
 		},
 		IconButton {
 			Icon = "plus",
@@ -544,59 +525,11 @@ return function()
 				end
 			end,
 		},
-		TextField {
-			Value = function()
-				return if Session.ImportPrompt() then "" else Session.Current().Name
-			end,
-			Placeholder = function()
-				return if Session.ImportPrompt() then "Asset id" else "Animation name"
-			end,
-			Width = 120,
-			Bold = true,
-			LayoutOrder = 3,
-			OnBlur = function()
-				Session.ImportPrompt(false)
-			end,
-			OnChange = function(Text: string)
-				if Session.ImportPrompt() then
-					Session.ImportPrompt(false)
-
-					const AssetId = tonumber(Text:match("%d+"))
-
-					if not AssetId then
-						Session.Say("That is not an asset id")
-
-						return
-					end
-
-					const Source, Problem = Saver.Import(AssetId)
-
-					if not Source then
-						Session.Say(Problem or "Import failed")
-
-						return
-					end
-
-					LoadInto(Source)
-
-					return
-				end
-
-				if Text == "" then
-					return
-				end
-
-				Session.Edit(Sift.Dictionary.merge(Session.Current(), {Name = Text}))
-			end,
-		},
 		Create "TextButton" {
 			Name = "MenuAnchor",
-			Size = function()
-				return UDim2.fromOffset(Settings.TextSize() + 10, Settings.TextSize() + 6)
-			end,
 			BackgroundTransparency = 1,
 			Text = "",
-			LayoutOrder = 4,
+			LayoutOrder = 3,
 
 			Vide.action(function(Object: TextButton)
 				MenuAnchor = Object
@@ -604,12 +537,12 @@ return function()
 
 			IconButton {
 				Icon = "ellipsis",
-				Tooltip = "Everything else",
+				Tooltip = function()
+					return if Session.Dirty() then "Everything else (unsaved changes)" else "Everything else"
+				end,
 				OnClick = MainMenu,
 			},
-		}
-		),
-		Row("Second", 2,
+		},
 		IconButton {
 			Icon = "skip-back",
 			Tooltip = "Go to start (Home)",
@@ -656,55 +589,6 @@ return function()
 			OnClick = function()
 				Session.Stop()
 				Session.Time(Session.SceneLength())
-			end,
-		},
-		Create "TextLabel" {
-			Name = "Clock",
-			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.fromScale(0, 1),
-			BackgroundTransparency = 1,
-			TextColor3 = Theme.Colors.Text,
-			TextSize = Settings.TextSize,
-			FontFace = Font.fromEnum(Enum.Font.RobotoMono),
-			LayoutOrder = 11,
-			Text = function()
-				return `{Format.Timecode(Session.Time(), Session.FrameRate())} / {Format.Timecode(Session.Current().Length, Session.FrameRate())}`
-			end,
-
-			Create "UIPadding" {
-				PaddingLeft = UDim.new(0, 4),
-				PaddingRight = UDim.new(0, 4),
-			},
-		}
-		),
-	}
-
-	const Tools = Create "Frame" {
-		Name = "Tools",
-		Size = UDim2.new(1, 0, 0, 24),
-		BackgroundTransparency = 1,
-
-		Create "UIPadding" {
-			PaddingRight = UDim.new(0, 6),
-		},
-		Create "UIListLayout" {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Right,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 2),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		},
-		Create "TextLabel" {
-			Name = "Dirty",
-			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.fromScale(0, 1),
-			BackgroundTransparency = 1,
-			TextColor3 = Theme.Colors.DimText,
-			TextSize = Settings.SmallText,
-			FontFace = Font.fromEnum(Enum.Font.BuilderSans),
-			LayoutOrder = 13,
-			Text = function()
-				return if Session.Dirty() then "Unsaved" else ""
 			end,
 		},
 		IconButton {
@@ -759,8 +643,88 @@ return function()
 		},
 	}
 
+	const NameRow = Create "Frame" {
+		Name = "NameRow",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+
+		Create "UIPadding" {
+			PaddingLeft = UDim.new(0, 4),
+			PaddingRight = UDim.new(0, 4),
+		},
+		Create "UIListLayout" {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		},
+		TextField {
+			Value = function()
+				return if Session.ImportPrompt() then "" else Session.Current().Name
+			end,
+			Placeholder = function()
+				return if Session.ImportPrompt() then "Asset id" else "Animation name"
+			end,
+			Width = 120,
+			Bold = true,
+			LayoutOrder = 1,
+			OnBlur = function()
+				Session.ImportPrompt(false)
+			end,
+			OnChange = function(Text: string)
+				if Session.ImportPrompt() then
+					Session.ImportPrompt(false)
+
+					const AssetId = tonumber(Text:match("%d+"))
+
+					if not AssetId then
+						Session.Say("That is not an asset id")
+
+						return
+					end
+
+					const Source, Problem = Saver.Import(AssetId)
+
+					if not Source then
+						Session.Say(Problem or "Import failed")
+
+						return
+					end
+
+					LoadInto(Source)
+
+					return
+				end
+
+				if Text == "" then
+					return
+				end
+
+				Session.Edit(Sift.Dictionary.merge(Session.Current(), {Name = Text}))
+			end,
+		},
+		Create "TextLabel" {
+			Name = "Clock",
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromScale(0, 1),
+			BackgroundTransparency = 1,
+			TextColor3 = Theme.Colors.DimText,
+			FontFace = Font.fromEnum(Enum.Font.RobotoMono),
+			LayoutOrder = 2,
+			TextSize = Settings.SmallText,
+			Text = function()
+				return `{Format.Timecode(Session.Time(), Session.FrameRate())} / {Format.Timecode(Session.Current().Length, Session.FrameRate())}`
+			end,
+
+			Create "UIPadding" {
+				PaddingLeft = UDim.new(0, 4),
+				PaddingRight = UDim.new(0, 4),
+			},
+		},
+	}
+
 	return {
-		Sidebar = Sidebar,
-		Tools = Tools,
+		Rail = Rail,
+		NameRow = NameRow,
 	}
 end

@@ -81,6 +81,8 @@ and previews the thumbnail on the Rthro mannequin Roblox renders it with. The pl
 reel driven runner into the place so the clip plays on your own character when you press Play, no
 upload needed. Bake writes frozen posed copies of the rig for scenery that never plays.
 
+Snap has three modes in the menu: off, frames, or keyframes and events with frames as the fallback.
+
 Keys: Space plays, K keys the selected joint or every joint, P pins the selected joint, Shift+M
 mirrors, Tab flips between the sheet and the curves, Delete removes selected keys, Left and Right
 step a frame (Shift for five), Home and End jump, R and T switch the gizmo, Ctrl+Z, Ctrl+Y, Ctrl+C,

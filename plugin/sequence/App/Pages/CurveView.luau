@@ -277,7 +277,7 @@ return function(Props: Props)
 
 			const Number = Active.StartValue - (Input.Position.Y - Active.StartY) * Active.PerPixel
 
-			WriteKey(Active.Channel, Active.Time, if Session.Snap() then math.round(Number * 100) / 100 else Number, `Curve {Active.Channel.Name}`)
+			WriteKey(Active.Channel, Active.Time, if Session.Snap() ~= "Off" then math.round(Number * 100) / 100 else Number, `Curve {Active.Channel.Name}`)
 		end,
 
 		Vide.action(function(Object: Frame)

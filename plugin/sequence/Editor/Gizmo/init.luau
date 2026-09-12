@@ -71,7 +71,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 	table.insert(Connections, Arcs.MouseButton1Down:Connect(Begin))
 	table.insert(Connections, Arcs.MouseButton1Up:Connect(Finish))
 	table.insert(Connections, Arcs.MouseDrag:Connect(function(Axis: Enum.Axis, Angle: number)
-		const Snapped = if Session.Snap() then math.rad(math.round(math.deg(Angle) / 5) * 5) else Angle
+		const Snapped = if Session.Snap() ~= "Off" then math.rad(math.round(math.deg(Angle) / 5) * 5) else Angle
 
 		Session.SetJointTransform(Joint.Name, StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped), `Rotate {Joint.Name}`)
 		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped)
@@ -79,7 +79,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 	table.insert(Connections, Movers.MouseButton1Down:Connect(Begin))
 	table.insert(Connections, Movers.MouseButton1Up:Connect(Finish))
 	table.insert(Connections, Movers.MouseDrag:Connect(function(Face: Enum.NormalId, Distance: number)
-		const Snapped = if Session.Snap() then math.round(Distance * 4) / 4 else Distance
+		const Snapped = if Session.Snap() ~= "Off" then math.round(Distance * 4) / 4 else Distance
 
 		Session.SetJointTransform(Joint.Name, StartTransform * CFrame.new(Vector3.fromNormalId(Face) * Snapped), `Move {Joint.Name}`)
 		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * StartTransform * CFrame.new(Vector3.fromNormalId(Face) * Snapped)

@@ -37,7 +37,7 @@ type RowEntry = {
 	Depth: number,
 }
 
-return function(HeaderPieces: () -> {Sidebar: Instance, Tools: Instance})
+return function(HeaderPieces: () -> {NameRow: Instance})
 	const Zoom = Vide.source(200)
 	const Offset = Vide.source(0)
 	const UserZoomed = Vide.source(false)
@@ -833,11 +833,9 @@ return function(HeaderPieces: () -> {Sidebar: Instance, Tools: Instance})
 	end
 
 	const function Header()
-		const Pieces = HeaderPieces()
-
 		return Create "Frame" {
 			Name = "Header",
-			Size = UDim2.new(1, 0, 0, 48),
+			Size = UDim2.new(1, 0, 0, 24),
 			BackgroundColor3 = Theme.Colors.Panel,
 			LayoutOrder = 1,
 
@@ -845,19 +843,12 @@ return function(HeaderPieces: () -> {Sidebar: Instance, Tools: Instance})
 				FillDirection = Enum.FillDirection.Horizontal,
 				SortOrder = Enum.SortOrder.LayoutOrder,
 			},
-			NameCell(1, Pieces.Sidebar),
+			NameCell(1, HeaderPieces().NameRow),
 			Create "Frame" {
-				Name = "LaneTop",
+				Name = "Ruler",
 				Size = UDim2.new(1, -NameWidth, 1, 0),
 				BackgroundTransparency = 1,
 				LayoutOrder = 2,
-
-				Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
-			Create "Frame" {
-				Name = "Ruler",
-				Size = UDim2.new(1, 0, 0, 24),
-				BackgroundTransparency = 1,
-				LayoutOrder = 1,
 				ClipsDescendants = true,
 				InputBegan = function(Input: InputObject)
 					if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
@@ -923,8 +914,6 @@ return function(HeaderPieces: () -> {Sidebar: Instance, Tools: Instance})
 					Size = UDim2.new(0, 1, 1, 0),
 					BackgroundColor3 = Theme.Colors.Accent,
 				},
-			},
-			Pieces.Tools,
 			},
 		}
 	end

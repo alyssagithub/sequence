@@ -86,7 +86,7 @@ function PoseTool.Toggle()
 		if Active.Mode == "Move" then
 			const Offset = (Camera.CFrame.RightVector * Delta.X - Camera.CFrame.UpVector * Delta.Y) * 0.01
 			const Local = PivotWorld:VectorToObjectSpace(Offset)
-			const Snapped = if Session.Snap() then Vector3.new(math.round(Local.X * 4) / 4, math.round(Local.Y * 4) / 4, math.round(Local.Z * 4) / 4) else Local
+			const Snapped = if Session.Snap() ~= "Off" then Vector3.new(math.round(Local.X * 4) / 4, math.round(Local.Y * 4) / 4, math.round(Local.Z * 4) / 4) else Local
 
 			Session.SetJointTransform(Joint.Name, Active.Start + Snapped, `Pose {Joint.Name}`)
 
@@ -98,7 +98,7 @@ function PoseTool.Toggle()
 		local Yaw = math.rad(Delta.X * 0.5)
 		local Pitch = math.rad(Delta.Y * 0.5)
 
-		if Session.Snap() then
+		if Session.Snap() ~= "Off" then
 			Yaw = math.rad(math.round(math.deg(Yaw) / 5) * 5)
 			Pitch = math.rad(math.round(math.deg(Pitch) / 5) * 5)
 		end

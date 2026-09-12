@@ -16,6 +16,8 @@ const Button = require(script.Parent.Parent.Components.Button)
 const Create = Vide.create
 
 return function()
+	const Pieces = Header()
+
 	return Create "Frame" {
 		Name = "MainPage",
 		Size = UDim2.fromScale(1, 1),
@@ -40,6 +42,7 @@ return function()
 					FillDirection = Enum.FillDirection.Horizontal,
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				},
+				Pieces.Rail,
 				Create "Frame" {
 					Name = "TimelineHolder",
 					Size = UDim2.fromScale(1, 1),
@@ -48,7 +51,9 @@ return function()
 
 					Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
 
-					Timeline(Header),
+					Timeline(function()
+						return Pieces
+					end),
 					Create "Frame" {
 						Name = "Welcome",
 						Size = UDim2.fromScale(1, 1),
