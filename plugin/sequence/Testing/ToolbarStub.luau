@@ -3,10 +3,10 @@ const Toolbar = {}
 
 function Toolbar.Create(CurrentPlugin: Plugin, OnClick: () -> ()): (PluginToolbar, PluginToolbarButton)
 	if not _G.SequenceTestBar then
-		const Bar = CurrentPlugin:CreateToolbar("Sequence testing")
+		const Bar = CurrentPlugin:CreateToolbar("sequence testing")
 
 		_G.SequenceTestBar = Bar
-		_G.SequenceTestButton = Bar:CreateButton("SequenceTestOpen", "Open the Sequence test editor", "", "Sequence")
+		_G.SequenceTestButton = Bar:CreateButton("SequenceTestOpen", "Open the sequence test editor", "", "sequence")
 	end
 
 	const Button = _G.SequenceTestButton :: PluginToolbarButton

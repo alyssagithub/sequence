@@ -21,7 +21,7 @@ function Widget.Create(CurrentPlugin: Plugin): DockWidgetPluginGui
 	end
 
 	Created.Name = "SequenceTestWidget"
-	Created.Title = "Sequence (testing)"
+	Created.Title = "sequence (testing)"
 	Created.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 	return Created
