@@ -8,17 +8,10 @@ const Button = require(script.Parent.Parent.Components.Button)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
 const TextField = require(script.Parent.Parent.Components.TextField)
 const Toggle = require(script.Parent.Parent.Components.Toggle)
-const Icon = require(script.Parent.Parent.Components.Icon)
 
 const Create = Vide.create
 
-type Tab = "Account" | "Faces" | "Presets"
-
-const Tabs = {
-	"Account",
-	"Faces",
-	"Presets",
-} :: {Tab}
+type Tab = "Account" | "Presets"
 
 const function Label(Text: string | () -> string, Order: number, Strong: boolean?)
 	return Create "TextLabel" {
@@ -104,7 +97,6 @@ const function Preview(Model: () -> Model?, Turn: () -> number)
 				const Copy = Shown:Clone()
 
 				Copy:PivotTo(CFrame.Angles(0, math.rad(Turn()), 0))
-				Inserter.SeatAccessories(Copy)
 				Copy.Parent = Viewport
 
 				const Center = Copy:GetBoundingBox().Position
@@ -378,8 +370,7 @@ return function(Props: {Close: () -> ()})
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				},
 				TabButton("Account", 1),
-				TabButton("Faces", 2),
-				TabButton("Presets", 3),
+				TabButton("Presets", 2),
 			},
 			Create "Frame" {
 				Name = "Account",
@@ -439,63 +430,10 @@ return function(Props: {Close: () -> ()})
 				Vide.indexes(function()
 					return Inserter.Bodies
 				end, function(Body, Index)
-					return Radio(Inserter.BodyLabels[Body()], 2 + Index, function()
+					return Radio(Body(), 2 + Index, function()
 						return Inserter.Body() == Body()
 					end, function()
 						Inserter.Body(Body())
-						Rebuild()
-					end)
-				end),
-			},
-			Create "ScrollingFrame" {
-				Name = "Faces",
-				Position = UDim2.fromOffset(12, 38),
-				Size = UDim2.new(1, -24, 1, -80),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				AutomaticCanvasSize = Enum.AutomaticSize.Y,
-				CanvasSize = UDim2.new(),
-				ScrollBarThickness = 4,
-				ScrollBarImageColor3 = Theme.Colors.DimText,
-				Visible = function()
-					return Tab() == "Faces"
-				end,
-
-				Create "UIListLayout" {
-					SortOrder = Enum.SortOrder.LayoutOrder,
-					Padding = UDim.new(0, 4),
-				},
-				Create "Frame" {
-					Size = UDim2.new(1, 0, 0, 26),
-					BackgroundTransparency = 1,
-					LayoutOrder = 1,
-
-					Create "UIListLayout" {
-						FillDirection = Enum.FillDirection.Horizontal,
-						VerticalAlignment = Enum.VerticalAlignment.Center,
-						Padding = UDim.new(0, 8),
-					},
-					Label("Face asset id", 1),
-					TextField {
-						Value = Inserter.FaceText,
-						Placeholder = "any face",
-						Width = 120,
-						LayoutOrder = 2,
-						OnChange = function(Text: string)
-							Inserter.FaceText(Text)
-							Inserter.Face(tonumber(Text:match("%d+")) or 0)
-							Rebuild()
-						end,
-					},
-				},
-				Vide.indexes(function()
-					return Inserter.Faces
-				end, function(Face, Index)
-					return Radio(Face().Name, 1 + Index, function()
-						return Inserter.Face() == Face().Id
-					end, function()
-						Inserter.Face(Face().Id)
-						Inserter.FaceText(if Face().Id == 0 then "" else `{Face().Id}`)
 						Rebuild()
 					end)
 				end),

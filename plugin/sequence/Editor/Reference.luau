@@ -5,12 +5,10 @@ const Vide = require(script.Parent.Parent.Packages.vide)
 const Session = require(script.Parent.Session)
 
 export type Item = {
-	Kind: "Image" | "Frames" | "Video",
+	Kind: "Image" | "Video",
 	Name: string,
 	Content: Content?,
-	Frames: {Content}?,
 	VideoId: string?,
-	FrameRate: number,
 	Offset: number,
 	Editables: {EditableImage}?,
 }
@@ -71,7 +69,6 @@ function Reference.AddAssetImage(AssetId: number)
 		Kind = "Image",
 		Name = `Image {AssetId}`,
 		Content = Content.fromAssetId(AssetId),
-		FrameRate = Session.FrameRate(),
 		Offset = 0,
 	})
 end
@@ -81,7 +78,6 @@ function Reference.AddVideo(AssetId: number)
 		Kind = "Video",
 		Name = `Video {AssetId}`,
 		VideoId = `rbxassetid://{AssetId}`,
-		FrameRate = Session.FrameRate(),
 		Offset = 0,
 	})
 end
@@ -90,6 +86,23 @@ const function Editable(File: File): EditableImage?
 	const Ok, Made = pcall(AssetService.CreateEditableImageAsync, AssetService, Content.fromUri(File:GetTemporaryId()))
 
 	return if Ok then Made else nil
+end
+
+function Reference.ImportVideo(): string?
+	const Ok, File = pcall(StudioService.PromptImportFile, StudioService, {"mp4", "webm", "mov"})
+
+	if not Ok or not File then
+		return if Ok then nil else `Could not open the file picker: {File}`
+	end
+
+	Add({
+		Kind = "Video",
+		Name = (File :: File).Name,
+		VideoId = (File :: File):GetTemporaryId(),
+		Offset = 0,
+	})
+
+	return nil
 end
 
 function Reference.ImportImage(): string?
@@ -109,7 +122,6 @@ function Reference.ImportImage(): string?
 		Kind = "Image",
 		Name = (File :: File).Name,
 		Content = Content.fromObject(Made),
-		FrameRate = Session.FrameRate(),
 		Offset = 0,
 		Editables = {Made},
 	})
@@ -117,57 +129,8 @@ function Reference.ImportImage(): string?
 	return nil
 end
 
-function Reference.ImportFrames(): string?
-	const Ok, Files = pcall(StudioService.PromptImportFiles, StudioService, {"png", "jpg", "jpeg", "bmp", "tga"})
-
-	if not Ok or not Files or #Files == 0 then
-		return if Ok then nil else `Could not open the file picker: {Files}`
-	end
-
-	table.sort(Files, function(A: File, B: File)
-		return A.Name < B.Name
-	end)
-
-	const Frames = {}
-	const Editables = {}
-
-	for _, File in Files do
-		const Made = Editable(File)
-
-		if Made then
-			table.insert(Frames, Content.fromObject(Made))
-			table.insert(Editables, Made)
-		end
-	end
-
-	if #Frames == 0 then
-		return "None of those files could be read as images"
-	end
-
-	Add({
-		Kind = "Frames",
-		Name = `{#Frames} frames from {Files[1].Name}`,
-		Frames = Frames,
-		FrameRate = Session.FrameRate(),
-		Offset = 0,
-		Editables = Editables,
-	})
-
-	return nil
-end
-
-function Reference.FrameAt(Item: Item, Time: number): Content?
-	if Item.Kind == "Image" then
-		return Item.Content
-	end
-
-	if Item.Kind ~= "Frames" or not Item.Frames then
-		return nil
-	end
-
-	const Index = math.floor((Time - Item.Offset) * Item.FrameRate) + 1
-
-	return Item.Frames[math.clamp(Index, 1, #Item.Frames)]
+function Reference.FrameAt(Item: Item): Content?
+	return if Item.Kind == "Image" then Item.Content else nil
 end
 
 function Reference.Destroy()

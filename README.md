@@ -27,7 +27,7 @@ plugin/sequence/
     Reference.luau       images, image sequences and videos loaded as references
     Playtest/            the reel driven runner that plays the clip on your character without uploading
     Bake.luau            frozen posed copies of the rig
-    Inserter.luau        character builder behind the insert window: any account with a body override, faces, presets
+    Inserter/            character builder behind the insert window: any account with a body override, plus the bundled dummies
     ClipSchema.luau      typed schema used when reading an animation back in
     EmoteRigData.fragment.xml   an AnimationRigData for R15, taken from a published emote; plugins cannot build one
   App/
@@ -48,9 +48,10 @@ tools/build_rbxmx.py     builds plugin/ into an rbxmx that the Studio bridge can
 
 ## What it does
 
-The rig button loads the selected models or opens the insert window: a live preview you can turn,
-an Account tab that builds any player by name or id (yours when empty) with an Original, R6, R15 or
-Old R15 body, a Faces tab, and Presets for R6, R15, Rthro and the coloured template rigs. Every Motor6D or AnimationConstraint joint becomes a track,
+Selecting any jointed model in the viewport loads it. The Insert button opens a window with a live
+preview you can turn, an Account tab that builds any player by name or id (yours when empty) as their
+Original body or on an R6 or R15 rig, and Presets: the R6, R15, TemplateR6 and TemplateR15 dummies,
+shipped inside the plugin. Every Motor6D or AnimationConstraint joint becomes a track,
 grouped under its rig. Move a part with Studio's own Move and Rotate tools, with the gizmo on the
 selected joint, or with the pose tool that lets you click and drag parts straight in the viewport,
 and a keyframe lands at the playhead. Turn auto key off to pose freely and press K to keep it.
@@ -72,8 +73,8 @@ the way Roblox's editor does, or to ServerStorage.MoonAnimatorExport, where Moon
 animation can be converted between keyframes and curves in place. Publish saves then opens Studio's
 upload window, and an asset id can be imported through the name box.
 
-The reference panel loads images and image sequences from disk through EditableImage without
-uploading anything, plays video assets in step with the playhead, and can put the same picture on a
+The reference panel loads images from disk through EditableImage and videos from disk or by asset id
+without uploading anything, playing video in step with the playhead, and can put the same picture on a
 board beside the rig. The emote panel checks the clip against the Marketplace emote validator's rules
 and previews the thumbnail on the Rthro mannequin Roblox renders it with. The playtest button writes a
 reel driven runner into the place so the clip plays on your own character when you press Play, no

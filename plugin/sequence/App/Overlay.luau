@@ -15,6 +15,7 @@ export type Entry = {
 
 const Overlay = {
 	Open = Vide.source(nil :: {Position: Vector2, Width: number, Entries: {Entry}}?),
+	Tip = Vide.source(nil :: {Text: string, Anchor: GuiObject}?),
 }
 
 local Root: GuiObject?
@@ -43,22 +44,84 @@ function Overlay.MenuAt(Position: Vector2, Entries: {Entry}, Width: number?)
 	})
 end
 
+function Overlay.ShowTip(Text: string, Anchor: GuiObject)
+	Overlay.Tip({Text = Text, Anchor = Anchor})
+end
+
+function Overlay.HideTip(Anchor: GuiObject)
+	const Current = Overlay.Tip()
+
+	if Current and Current.Anchor == Anchor then
+		Overlay.Tip(nil)
+	end
+end
+
 function Overlay.Layer()
-	return Create "TextButton" {
+	return Create "Frame" {
 		Name = "Overlay",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Text = "",
-		AutoButtonColor = false,
 		ZIndex = 100,
-		Visible = function()
-			return Overlay.Open() ~= nil
-		end,
-		Activated = Overlay.Close,
-		MouseButton2Click = Overlay.Close,
 
-		Vide.action(function(Object: TextButton)
+		Vide.action(function(Object: Frame)
 			Root = Object
+		end),
+
+		Create "TextButton" {
+			Name = "Shade",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 100,
+			Visible = function()
+				return Overlay.Open() ~= nil
+			end,
+			Activated = Overlay.Close,
+			MouseButton2Click = Overlay.Close,
+		},
+
+		Vide.show(Overlay.Tip, function(Tip)
+			return Create "TextLabel" {
+				Name = "Tooltip",
+				AutomaticSize = Enum.AutomaticSize.XY,
+				BackgroundColor3 = Theme.Colors.Background,
+				TextColor3 = Theme.Colors.Text,
+				TextSize = Settings.SmallText,
+				FontFace = Font.fromEnum(Enum.Font.BuilderSans),
+				ZIndex = 110,
+				Text = function()
+					return Tip().Text
+				end,
+				Vide.action(function(Label: TextLabel)
+					Vide.effect(function()
+						const Current = Tip()
+						const Origin = if Root then Root.AbsolutePosition else Vector2.zero
+						const Room = if Root then Root.AbsoluteSize else Vector2.new(1000, 1000)
+						const Anchor = Current.Anchor
+						const Middle = Anchor.AbsolutePosition.X + Anchor.AbsoluteSize.X / 2 - Origin.X
+						const Below = Anchor.AbsolutePosition.Y + Anchor.AbsoluteSize.Y - Origin.Y
+
+						task.defer(function()
+							const Width = Label.AbsoluteSize.X
+							const Height = Label.AbsoluteSize.Y
+							const X = math.clamp(Middle - Width / 2, 4, math.max(4, Room.X - Width - 4))
+							const Y = if Below + Height + 6 > Room.Y then Anchor.AbsolutePosition.Y - Origin.Y - Height - 4 else Below + 4
+
+							Label.Position = UDim2.fromOffset(X, Y)
+						end)
+					end)
+				end),
+
+				Create "UICorner" {CornerRadius = UDim.new(0, 4)},
+				Create "UIStroke" {Color = Theme.Colors.Border},
+				Create "UIPadding" {
+					PaddingLeft = UDim.new(0, 6),
+					PaddingRight = UDim.new(0, 6),
+					PaddingTop = UDim.new(0, 2),
+					PaddingBottom = UDim.new(0, 2),
+				},
+			}
 		end),
 
 		Vide.show(Overlay.Open, function(Open)

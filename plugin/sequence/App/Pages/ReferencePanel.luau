@@ -74,7 +74,7 @@ const function Viewer(Order: number, Board: boolean)
 					return Content.none
 				end
 
-				return Reference.FrameAt(Current, Session.Time()) or Content.none
+				return Reference.FrameAt(Current) or Content.none
 			end,
 		},
 		Create "VideoFrame" {
@@ -278,11 +278,11 @@ return function()
 				end,
 			},
 			Button {
-				Text = "Frames",
+				Text = "Video file",
 				Icon = "film",
 				LayoutOrder = 2,
 				OnClick = function()
-					const Problem = Reference.ImportFrames()
+					const Problem = Reference.ImportVideo()
 
 					if Problem then
 						Session.Say(Problem)
@@ -336,29 +336,8 @@ return function()
 				end,
 			}
 		),
-		Label("Local files are read through EditableImage and never uploaded. A folder of numbered frames plays in step with the timeline; a video asset follows the playhead.", 6),
+		Label("Local files are read straight from disk and never uploaded: images through EditableImage, videos as a temporary asset. Videos follow the playhead.", 6),
 		Row(7,
-			Label("Frame rate", 1),
-			NumberField {
-				Value = function()
-					const Item = Chosen()
-
-					return if Item then Item.FrameRate else 30
-				end,
-				Minimum = 1,
-				Maximum = 240,
-				Width = 56,
-				Suffix = "fps",
-				LayoutOrder = 2,
-				Disabled = function()
-					const Item = Chosen()
-
-					return Item == nil or Item.Kind ~= "Frames"
-				end,
-				OnChange = function(Rate: number)
-					Reference.Update(Reference.Chosen(), {FrameRate = Rate})
-				end,
-			},
 			Label("Starts at", 3),
 			NumberField {
 				Value = function()

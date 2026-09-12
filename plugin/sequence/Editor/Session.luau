@@ -5,6 +5,7 @@ const UserInputService = game:GetService("UserInputService")
 const ChangeHistoryService = game:GetService("ChangeHistoryService")
 const Vide = require(script.Parent.Parent.Packages.vide)
 const Sift = require(script.Parent.Parent.Packages.sift)
+const Settings = require(script.Parent.Parent.Settings)
 const Clip = require(script.Parent.Clip)
 const Rig = require(script.Parent.Rig)
 const Pose = require(script.Parent.Pose)
@@ -1168,6 +1169,7 @@ end
 
 function Session.Start(CurrentPlugin: Plugin)
 	Session.Plugin = CurrentPlugin
+	Session.FrameRate(Settings.Get("FrameRate")())
 
 	Vide.effect(function()
 		Session.Rigs()
@@ -1243,6 +1245,25 @@ function Session.Start(CurrentPlugin: Plugin)
 			end
 
 			return
+		end
+
+		const Model = if Picked:IsA("Model") then Picked else Picked:FindFirstAncestorOfClass("Model")
+
+		if not Model or not Model:IsDescendantOf(workspace) or Model.Name == "Sequence onion skin" or Model:FindFirstAncestor("Sequence onion skin") then
+			return
+		end
+
+		if not Session.LoadRig(Model) then
+			return
+		end
+
+		Session.Say(`{Model.Name} loaded, it stays in the timeline until you release it`)
+
+		const Loaded = Session.Rig()
+		const Joint = if Loaded then Rig.JointOf(Loaded, Picked) else nil
+
+		if Joint then
+			Session.SelectedJoint(Joint.Name)
 		end
 	end)
 end

@@ -15,41 +15,6 @@ const Icon = require(script.Parent.Parent.Components.Icon)
 
 const Create = Vide.create
 
-const function PickRigs(): string?
-	local Added = 0
-
-	for _, Picked in Selection:Get() do
-		const Model = if Picked:IsA("Model") then Picked else Picked:FindFirstAncestorOfClass("Model")
-
-		if Model and Session.LoadRig(Model) then
-			Added += 1
-		end
-	end
-
-	return if Added > 0 then nil else "Select a model with Motor6D or AnimationConstraint joints first"
-end
-
-const function InsertMenu(Anchor: GuiObject)
-	Overlay.Menu(Anchor, {
-		{
-			Label = "Load the selected models",
-			Action = function()
-				const Problem = PickRigs()
-
-				if Problem then
-					Session.Say(Problem)
-				end
-			end,
-		},
-		{
-			Label = "Insert a character...",
-			Action = function()
-				Session.Panel("Insert")
-			end,
-		},
-	} :: {Overlay.Entry}, 220)
-end
-
 const function LoadInto(Source: Instance)
 	const Loaded = Session.Rig()
 
@@ -186,7 +151,6 @@ end
 return function()
 	local OpenAnchor: GuiObject
 	local SaveAnchor: GuiObject
-	local RigAnchor: GuiObject
 
 	const function Disabled(): boolean
 		return Session.Rig() == nil
@@ -236,12 +200,8 @@ return function()
 			AutoButtonColor = true,
 			LayoutOrder = 1,
 			Activated = function()
-				InsertMenu(RigAnchor)
+				Session.Panel("Insert")
 			end,
-
-			Vide.action(function(Object: TextButton)
-				RigAnchor = Object
-			end),
 
 			Create "UICorner" {CornerRadius = UDim.new(0, 4)},
 			Create "UIPadding" {
@@ -254,9 +214,7 @@ return function()
 				Padding = UDim.new(0, 6),
 			},
 			Icon {
-				Name = function()
-					return if Session.Rig() then "plus" else "person-standing"
-				end,
+				Name = "person-standing",
 				Colour = Theme.Colors.ButtonText,
 				LayoutOrder = 1,
 			},
@@ -268,11 +226,7 @@ return function()
 				TextSize = Settings.TextSize,
 				FontFace = Font.fromEnum(Enum.Font.BuilderSansMedium),
 				LayoutOrder = 2,
-				Text = function()
-					const Loaded = Session.Rig()
-
-					return if Loaded then Loaded.Model.Name else "Pick a rig"
-				end,
+				Text = "Insert",
 			},
 		},
 		TextField {

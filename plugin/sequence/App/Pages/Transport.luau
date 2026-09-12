@@ -257,6 +257,7 @@ return function()
 			LayoutOrder = 11,
 			OnChange = function(Rate: number)
 				Session.FrameRate(math.round(Rate))
+				Settings.Set("FrameRate", math.round(Rate))
 			end,
 		},
 		IconButton {

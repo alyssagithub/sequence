@@ -24,6 +24,15 @@ const Definitions: {Definition} = {
 		Maximum = 22,
 	},
 	{
+		Key = "FrameRate",
+		Label = "Frame rate",
+		Detail = "",
+		Group = "Timeline",
+		Default = 30,
+		Minimum = 1,
+		Maximum = 240,
+	},
+	{
 		Key = "SaveLocation",
 		Label = "Save location",
 		Detail = "",

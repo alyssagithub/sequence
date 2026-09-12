@@ -3,6 +3,7 @@ const Vide = require(script.Parent.Parent.Parent.Packages.vide)
 const Settings = require(script.Parent.Parent.Parent.Settings)
 const Theme = require(script.Parent.Parent.Theme)
 const Icon = require(script.Parent.Icon)
+const Overlay = require(script.Parent.Parent.Overlay)
 
 const Create = Vide.create
 
@@ -21,8 +22,6 @@ type Props = {
 
 return function(Props: Props)
 	const Hovered = Vide.source(false)
-	const Below = Vide.source(true)
-	const Side = Vide.source(0.5)
 	local Anchor: TextButton
 
 	const function Room(): number
@@ -58,32 +57,24 @@ return function(Props: Props)
 		MouseEnter = function()
 			Hovered(true)
 
-			if not Anchor then
-				return
-			end
-
-			const Screen = Anchor:FindFirstAncestorWhichIsA("LayerCollector")
-			const Bottom = if Screen then Screen.AbsolutePosition.Y + Screen.AbsoluteSize.Y else math.huge
-			const Right = if Screen then Screen.AbsolutePosition.X + Screen.AbsoluteSize.X else math.huge
-			const Left = if Screen then Screen.AbsolutePosition.X else -math.huge
-			const Middle = Anchor.AbsolutePosition.X + Anchor.AbsoluteSize.X / 2
-
-			Below(Bottom - (Anchor.AbsolutePosition.Y + Anchor.AbsoluteSize.Y) > 30)
-
-			if Right - Middle < 90 then
-				Side(1)
-			elseif Middle - Left < 90 then
-				Side(0)
-			else
-				Side(0.5)
+			if Anchor and Props.Tooltip then
+				Overlay.ShowTip(Vide.read(Props.Tooltip), Anchor)
 			end
 		end,
 		MouseLeave = function()
 			Hovered(false)
+
+			if Anchor then
+				Overlay.HideTip(Anchor)
+			end
 		end,
 
 		Vide.action(function(Object: TextButton)
 			Anchor = Object
+
+			Vide.cleanup(function()
+				Overlay.HideTip(Object)
+			end)
 		end),
 
 		Icon {
@@ -102,36 +93,6 @@ return function(Props: Props)
 
 				return if Hovered() then Theme.Colors.Text() else Theme.Colors.DimText()
 			end,
-		},
-		Create "TextLabel" {
-			Name = "Tooltip",
-			AnchorPoint = function()
-				return Vector2.new(Side(), if Below() then 0 else 1)
-			end,
-			Position = function()
-				return UDim2.new(Side(), 0, if Below() then 1 else 0, if Below() then 4 else -4)
-			end,
-			AutomaticSize = Enum.AutomaticSize.XY,
-			BackgroundColor3 = Theme.Colors.Background,
-			TextColor3 = Theme.Colors.Text,
-			TextSize = Settings.SmallText,
-			FontFace = Font.fromEnum(Enum.Font.BuilderSans),
-			ZIndex = 60,
-			Visible = function()
-				return Hovered() and Props.Tooltip ~= nil
-			end,
-			Text = function()
-				return if Props.Tooltip then Vide.read(Props.Tooltip) else ""
-			end,
-
-			Create "UICorner" {CornerRadius = UDim.new(0, 4)},
-			Create "UIStroke" {Color = Theme.Colors.Border},
-			Create "UIPadding" {
-				PaddingLeft = UDim.new(0, 6),
-				PaddingRight = UDim.new(0, 6),
-				PaddingTop = UDim.new(0, 2),
-				PaddingBottom = UDim.new(0, 2),
-			},
 		},
 		Create "UICorner" {CornerRadius = UDim.new(0, 4)},
 	}
