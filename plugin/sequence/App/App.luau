@@ -1,10 +1,12 @@
 --!strict
 const RunService = game:GetService("RunService")
 const Vide = require(script.Parent.Parent.Packages.vide)
+const Config = require(script.Parent.Parent.Config)
 const Theme = require(script.Parent.Theme)
 const Toolbar = require(script.Parent.Toolbar)
 const Widget = require(script.Parent.Widget)
 const Main = require(script.Parent.Pages.Main)
+const ViewportPage = require(script.Parent.Pages.Viewport)
 const Session = require(script.Parent.Parent.Editor.Session)
 const Gizmo = require(script.Parent.Parent.Editor.Gizmo)
 const OnionSkin = require(script.Parent.Parent.Editor.OnionSkin)
@@ -37,11 +39,23 @@ function App.New(CurrentPlugin: Plugin)
 	end)
 
 	const Unmount = Vide.mount(Main, Window)
+	const Screen = Vide.create "ScreenGui" {
+		Name = `{Config.Name}Viewport`,
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = 50,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = game:GetService("CoreGui"),
+	}
+
+	const UnmountScreen = Vide.mount(ViewportPage, Screen)
 
 	return {
 		Destroy = function()
 			EnabledConnection:Disconnect()
 			Unmount()
+			UnmountScreen()
+			Screen:Destroy()
 			DestroyEditor()
 			Session.Destroy()
 			Gizmo.Destroy()

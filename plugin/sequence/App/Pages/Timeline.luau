@@ -37,7 +37,7 @@ type RowEntry = {
 	Depth: number,
 }
 
-return function()
+return function(HeaderPieces: () -> {Sidebar: Instance, Tools: Instance})
 	const Zoom = Vide.source(200)
 	const Offset = Vide.source(0)
 	const UserZoomed = Vide.source(false)
@@ -833,9 +833,11 @@ return function()
 	end
 
 	const function Header()
+		const Pieces = HeaderPieces()
+
 		return Create "Frame" {
 			Name = "Header",
-			Size = UDim2.new(1, 0, 0, 18),
+			Size = UDim2.new(1, 0, 0, 48),
 			BackgroundColor3 = Theme.Colors.Panel,
 			LayoutOrder = 1,
 
@@ -843,66 +845,19 @@ return function()
 				FillDirection = Enum.FillDirection.Horizontal,
 				SortOrder = Enum.SortOrder.LayoutOrder,
 			},
-			NameCell(1,
-				Create "TextLabel" {
-					Position = UDim2.fromOffset(8, 0),
-					Size = UDim2.new(1, -64, 1, 0),
-					BackgroundTransparency = 1,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextColor3 = Theme.Colors.DimText,
-					TextSize = Settings.SmallText,
-					FontFace = Font.fromEnum(Enum.Font.BuilderSansMedium),
-					ZIndex = 4,
-					Text = function()
-						const Count = #Session.Rigs()
-
-						if Count == 0 then
-							return "Rigs"
-						end
-
-						local Joints = 0
-
-						for _, Entry in Session.Rigs() do
-							Joints += #Entry.Loaded.Joints
-						end
-
-						return `{Count} rig{if Count == 1 then "" else "s"}, {Joints} joints`
-					end,
-				},
-				IconButton {
-					Icon = function()
-						return if Session.View() == "Curves" then "list" else "spline"
-					end,
-					Size = Settings.SmallText,
-					Position = UDim2.new(1, -28, 0.5, 0),
-					AnchorPoint = Vector2.new(1, 0.5),
-					Tooltip = function()
-						return if Session.View() == "Curves" then "Back to the dope sheet" else "Curve editor for the selected joint"
-					end,
-					Active = function()
-						return Session.View() == "Curves"
-					end,
-					OnClick = function()
-						Session.View(if Session.View() == "Curves" then "Sheet" else "Curves")
-					end,
-				},
-				IconButton {
-					Icon = "scan",
-					Size = Settings.SmallText,
-					Position = UDim2.new(1, -4, 0.5, 0),
-					AnchorPoint = Vector2.new(1, 0.5),
-					Tooltip = "Fit the whole animation",
-					OnClick = function()
-						UserZoomed(false)
-						Fit(Session.SceneLength(), LaneWidth())
-					end,
-				}
-			),
+			NameCell(1, Pieces.Sidebar),
 			Create "Frame" {
-				Name = "Ruler",
+				Name = "LaneTop",
 				Size = UDim2.new(1, -NameWidth, 1, 0),
 				BackgroundTransparency = 1,
 				LayoutOrder = 2,
+
+				Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
+			Create "Frame" {
+				Name = "Ruler",
+				Size = UDim2.new(1, 0, 0, 24),
+				BackgroundTransparency = 1,
+				LayoutOrder = 1,
 				ClipsDescendants = true,
 				InputBegan = function(Input: InputObject)
 					if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
@@ -933,7 +888,7 @@ return function()
 						BackgroundColor3 = Theme.Colors.DimText,
 
 						Create "TextLabel" {
-							Position = UDim2.fromOffset(3, -10),
+							Position = UDim2.fromOffset(3, -12),
 							AutomaticSize = Enum.AutomaticSize.XY,
 							BackgroundTransparency = 1,
 							TextColor3 = Theme.Colors.DimText,
@@ -968,6 +923,8 @@ return function()
 					Size = UDim2.new(0, 1, 1, 0),
 					BackgroundColor3 = Theme.Colors.Accent,
 				},
+			},
+			Pieces.Tools,
 			},
 		}
 	end

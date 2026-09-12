@@ -10,7 +10,6 @@ const Timeline = require(script.Parent.Timeline)
 const Inspector = require(script.Parent.Inspector)
 const ReferencePanel = require(script.Parent.ReferencePanel)
 const EmotePanel = require(script.Parent.EmotePanel)
-const InsertWindow = require(script.Parent.InsertWindow)
 const Icon = require(script.Parent.Parent.Components.Icon)
 const Button = require(script.Parent.Parent.Components.Button)
 
@@ -31,14 +30,6 @@ return function()
 
 			Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
 			Create "Frame" {
-				Name = "Top",
-				Size = UDim2.new(1, 0, 0, 28),
-				BackgroundTransparency = 1,
-				LayoutOrder = 1,
-
-				Header(),
-			},
-			Create "Frame" {
 				Name = "Body",
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
@@ -57,7 +48,7 @@ return function()
 
 					Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
 
-					Timeline(),
+					Timeline(Header),
 					Create "Frame" {
 						Name = "Welcome",
 						Size = UDim2.fromScale(1, 1),
@@ -67,67 +58,6 @@ return function()
 							return Session.Rig() == nil
 						end,
 
-						Create "Frame" {
-							Name = "Offer",
-							AnchorPoint = Vector2.new(0.5, 1),
-							Position = UDim2.new(0.5, 0, 1, -16),
-							AutomaticSize = Enum.AutomaticSize.XY,
-							BackgroundColor3 = Theme.Colors.Panel,
-							ZIndex = 32,
-							Visible = function()
-								return Session.Offer() ~= nil
-							end,
-
-							Create "UICorner" {CornerRadius = UDim.new(0, 6)},
-							Create "UIStroke" {Color = Theme.Colors.Border},
-							Create "UIPadding" {
-								PaddingLeft = UDim.new(0, 12),
-								PaddingRight = UDim.new(0, 12),
-								PaddingTop = UDim.new(0, 8),
-								PaddingBottom = UDim.new(0, 8),
-							},
-							Create "UIListLayout" {
-								FillDirection = Enum.FillDirection.Horizontal,
-								VerticalAlignment = Enum.VerticalAlignment.Center,
-								Padding = UDim.new(0, 10),
-								SortOrder = Enum.SortOrder.LayoutOrder,
-							},
-							Create "TextLabel" {
-								AutomaticSize = Enum.AutomaticSize.XY,
-								BackgroundTransparency = 1,
-								TextColor3 = Theme.Colors.Text,
-								TextSize = Settings.TextSize,
-								FontFace = Font.fromEnum(Enum.Font.BuilderSans),
-								LayoutOrder = 1,
-								ZIndex = 33,
-								Text = function()
-									const Model = Session.Offer()
-
-									return if Model then `Animate {Model.Name}?` else ""
-								end,
-							},
-							Button {
-								Text = "Yes",
-								Primary = true,
-								LayoutOrder = 2,
-								OnClick = function()
-									const Model = Session.Offer()
-
-									Session.Offer(nil)
-
-									if Model then
-										Session.LoadRig(Model)
-									end
-								end,
-							},
-							Button {
-								Text = "No",
-								LayoutOrder = 3,
-								OnClick = function()
-									Session.Offer(nil)
-								end,
-							},
-						},
 						Create "Frame" {
 							Name = "Card",
 							AnchorPoint = Vector2.new(0.5, 0.5),
@@ -207,29 +137,89 @@ return function()
 			},
 		},
 		Create "TextButton" {
-			Name = "Modal",
+			Name = "OfferModal",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = Color3.new(),
-			BackgroundTransparency = 0.5,
+			BackgroundTransparency = 0.45,
 			Text = "",
 			AutoButtonColor = false,
-			ZIndex = 79,
+			ZIndex = 70,
 			Visible = function()
-				return Session.Panel() == "Insert"
+				return Session.Offer() ~= nil
 			end,
 			Activated = function()
-				Session.Panel(nil)
+				Session.Offer(nil)
 			end,
 
-			Vide.show(function()
-				return Session.Panel() == "Insert"
-			end, function()
-				return InsertWindow {
-					Close = function()
-						Session.Panel(nil)
+			Create "Frame" {
+				Name = "Offer",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AutomaticSize = Enum.AutomaticSize.XY,
+				BackgroundColor3 = Theme.Colors.Panel,
+				ZIndex = 71,
+
+				Create "UICorner" {CornerRadius = UDim.new(0, 8)},
+				Create "UIStroke" {
+					Color = Theme.Colors.Accent,
+					Thickness = 2,
+				},
+				Create "UIPadding" {
+					PaddingLeft = UDim.new(0, 18),
+					PaddingRight = UDim.new(0, 18),
+					PaddingTop = UDim.new(0, 10),
+					PaddingBottom = UDim.new(0, 10),
+				},
+				Create "UIListLayout" {
+					FillDirection = Enum.FillDirection.Horizontal,
+					VerticalAlignment = Enum.VerticalAlignment.Center,
+					Padding = UDim.new(0, 14),
+					SortOrder = Enum.SortOrder.LayoutOrder,
+				},
+				Icon {
+					Name = "person-standing",
+					Size = 22,
+					Colour = Theme.Colors.Accent,
+					LayoutOrder = 1,
+				},
+				Create "TextLabel" {
+					AutomaticSize = Enum.AutomaticSize.XY,
+					BackgroundTransparency = 1,
+					TextColor3 = Theme.Colors.Text,
+					TextSize = function()
+						return Settings.TextSize() + 2
 					end,
-				}
-			end),
+					FontFace = Font.fromEnum(Enum.Font.BuilderSansBold),
+					LayoutOrder = 2,
+					ZIndex = 72,
+					Text = function()
+						const Model = Session.Offer()
+
+						return if Model then `Animate {Model.Name}?` else ""
+					end,
+				},
+				Button {
+					Text = "Yes",
+					Primary = true,
+					LayoutOrder = 3,
+					OnClick = function()
+						const Model = Session.Offer()
+
+						Session.Offer(nil)
+
+						if Model then
+							Session.LoadRig(Model)
+						end
+					end,
+				},
+				Button {
+					Text = "No",
+					LayoutOrder = 4,
+					OnClick = function()
+						Session.Offer(nil)
+					end,
+				},
+			},
 		},
 		Overlay.Layer(),
 	}

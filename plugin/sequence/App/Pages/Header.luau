@@ -464,21 +464,34 @@ return function()
 		}, 260)
 	end
 
-	return Create "Frame" {
-		Name = "Header",
-		Size = UDim2.new(1, 0, 0, 28),
-		BackgroundColor3 = Theme.Colors.Panel,
+	const function Row(Name: string, Order: number, ...: Instance)
+		return Create "Frame" {
+			Name = Name,
+			Size = UDim2.new(1, 0, 0, 24),
+			BackgroundTransparency = 1,
+			LayoutOrder = Order,
 
-		Create "UIPadding" {
-			PaddingLeft = UDim.new(0, 6),
-			PaddingRight = UDim.new(0, 6),
-		},
-		Create "UIListLayout" {
-			FillDirection = Enum.FillDirection.Horizontal,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 3),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		},
+			Create "UIPadding" {
+				PaddingLeft = UDim.new(0, 4),
+				PaddingRight = UDim.new(0, 4),
+			},
+			Create "UIListLayout" {
+				FillDirection = Enum.FillDirection.Horizontal,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				Padding = UDim.new(0, 2),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+			},
+			...,
+		}
+	end
+
+	const Sidebar = Create "Frame" {
+		Name = "Sidebar",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+
+		Create "UIListLayout" {SortOrder = Enum.SortOrder.LayoutOrder},
+		Row("First", 1,
 		Create "TextButton" {
 			Name = "InsertButton",
 			AutomaticSize = Enum.AutomaticSize.X,
@@ -594,13 +607,9 @@ return function()
 				Tooltip = "Everything else",
 				OnClick = MainMenu,
 			},
-		},
-		Create "Frame" {
-			Name = "Gap",
-			Size = UDim2.fromOffset(8, 1),
-			BackgroundTransparency = 1,
-			LayoutOrder = 5,
-		},
+		}
+		),
+		Row("Second", 2,
 		IconButton {
 			Icon = "skip-back",
 			Tooltip = "Go to start (Home)",
@@ -666,14 +675,24 @@ return function()
 				PaddingLeft = UDim.new(0, 4),
 				PaddingRight = UDim.new(0, 4),
 			},
-		},
-		Create "Frame" {
-			Name = "Spacer",
-			Size = UDim2.fromScale(1, 0),
-			BackgroundTransparency = 1,
-			LayoutOrder = 12,
+		}
+		),
+	}
 
-			Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},
+	const Tools = Create "Frame" {
+		Name = "Tools",
+		Size = UDim2.new(1, 0, 0, 24),
+		BackgroundTransparency = 1,
+
+		Create "UIPadding" {
+			PaddingRight = UDim.new(0, 6),
+		},
+		Create "UIListLayout" {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 2),
+			SortOrder = Enum.SortOrder.LayoutOrder,
 		},
 		Create "TextLabel" {
 			Name = "Dirty",
@@ -738,5 +757,10 @@ return function()
 				Session.KeyAll()
 			end,
 		},
+	}
+
+	return {
+		Sidebar = Sidebar,
+		Tools = Tools,
 	}
 end
