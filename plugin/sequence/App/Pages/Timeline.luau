@@ -370,9 +370,10 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 
 			Create "Frame" {
 				Name = "Edge",
-				Position = UDim2.new(1, -2, 0, 0),
-				Size = UDim2.new(0, 2, 1, 0),
-				BackgroundColor3 = Theme.Colors.Border,
+				Position = UDim2.new(1, -4, 0, 0),
+				Size = UDim2.new(0, 4, 1, 0),
+				BackgroundColor3 = Theme.Colors.DimText,
+				BackgroundTransparency = 0.55,
 				ZIndex = 4,
 			},
 			...,
@@ -853,9 +854,10 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 
 				Create "Frame" {
 					Name = "Bottom",
-					Position = UDim2.new(0, 0, 1, -1),
-					Size = UDim2.new(1, 0, 0, 1),
-					BackgroundColor3 = Theme.Colors.Border,
+					Position = UDim2.new(0, 0, 1, -2),
+					Size = UDim2.new(1, 0, 0, 2),
+					BackgroundColor3 = Theme.Colors.DimText,
+					BackgroundTransparency = 0.55,
 					ZIndex = 6,
 				},
 				InputBegan = function(Input: InputObject)
