@@ -51,7 +51,7 @@ const function Insert(Make: () -> (Model?, string?))
 end
 
 const function InsertMenu(Anchor: GuiObject)
-	Overlay.Menu(Anchor, {
+	const Entries: {Overlay.Entry} = {
 		{
 			Label = "Load the selected models",
 			Action = function()
@@ -94,7 +94,9 @@ const function InsertMenu(Anchor: GuiObject)
 				Session.InsertPrompt(true)
 			end,
 		},
-	}, 260)
+	}
+
+	Overlay.Menu(Anchor, Entries, 260)
 end
 
 const function LoadInto(Source: Instance)
