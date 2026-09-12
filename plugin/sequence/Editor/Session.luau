@@ -56,6 +56,7 @@ const Session = {
 	Collapsed = Vide.source({} :: {[string]: boolean}),
 	View = Vide.source("Sheet" :: "Sheet" | "Curves"),
 	Panel = Vide.source(nil :: string?),
+	Offer = Vide.source(nil :: Model?),
 	EmoteChecks = Vide.source(false),
 	Problems = Vide.source({} :: {Emote.Problem}),
 	Plugin = nil :: Plugin?,
@@ -1247,24 +1248,19 @@ function Session.Start(CurrentPlugin: Plugin)
 			return
 		end
 
+		if #Session.Rigs() > 0 then
+			return
+		end
+
 		const Model = if Picked:IsA("Model") then Picked else Picked:FindFirstAncestorOfClass("Model")
 
-		if not Model or not Model:IsDescendantOf(workspace) or Model.Name == "Sequence onion skin" or Model:FindFirstAncestor("Sequence onion skin") then
+		if not Model or not Model:IsDescendantOf(workspace) or #Rig.FindMotors(Model) == 0 then
+			Session.Offer(nil)
+
 			return
 		end
 
-		if not Session.LoadRig(Model) then
-			return
-		end
-
-		Session.Say(`{Model.Name} loaded, it stays in the timeline until you release it`)
-
-		const Loaded = Session.Rig()
-		const Joint = if Loaded then Rig.JointOf(Loaded, Picked) else nil
-
-		if Joint then
-			Session.SelectedJoint(Joint.Name)
-		end
+		Session.Offer(Model)
 	end)
 end
 

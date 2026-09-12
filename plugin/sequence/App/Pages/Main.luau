@@ -13,6 +13,7 @@ const ReferencePanel = require(script.Parent.ReferencePanel)
 const EmotePanel = require(script.Parent.EmotePanel)
 const InsertWindow = require(script.Parent.InsertWindow)
 const Icon = require(script.Parent.Parent.Components.Icon)
+const Button = require(script.Parent.Parent.Components.Button)
 
 const Create = Vide.create
 
@@ -75,6 +76,67 @@ return function()
 							return Session.Rig() == nil
 						end,
 
+						Create "Frame" {
+							Name = "Offer",
+							AnchorPoint = Vector2.new(0.5, 1),
+							Position = UDim2.new(0.5, 0, 1, -16),
+							AutomaticSize = Enum.AutomaticSize.XY,
+							BackgroundColor3 = Theme.Colors.Panel,
+							ZIndex = 32,
+							Visible = function()
+								return Session.Offer() ~= nil
+							end,
+
+							Create "UICorner" {CornerRadius = UDim.new(0, 6)},
+							Create "UIStroke" {Color = Theme.Colors.Border},
+							Create "UIPadding" {
+								PaddingLeft = UDim.new(0, 12),
+								PaddingRight = UDim.new(0, 12),
+								PaddingTop = UDim.new(0, 8),
+								PaddingBottom = UDim.new(0, 8),
+							},
+							Create "UIListLayout" {
+								FillDirection = Enum.FillDirection.Horizontal,
+								VerticalAlignment = Enum.VerticalAlignment.Center,
+								Padding = UDim.new(0, 10),
+								SortOrder = Enum.SortOrder.LayoutOrder,
+							},
+							Create "TextLabel" {
+								AutomaticSize = Enum.AutomaticSize.XY,
+								BackgroundTransparency = 1,
+								TextColor3 = Theme.Colors.Text,
+								TextSize = Settings.TextSize,
+								FontFace = Font.fromEnum(Enum.Font.BuilderSans),
+								LayoutOrder = 1,
+								ZIndex = 33,
+								Text = function()
+									const Model = Session.Offer()
+
+									return if Model then `Animate {Model.Name}?` else ""
+								end,
+							},
+							Button {
+								Text = "Yes",
+								Primary = true,
+								LayoutOrder = 2,
+								OnClick = function()
+									const Model = Session.Offer()
+
+									Session.Offer(nil)
+
+									if Model then
+										Session.LoadRig(Model)
+									end
+								end,
+							},
+							Button {
+								Text = "No",
+								LayoutOrder = 3,
+								OnClick = function()
+									Session.Offer(nil)
+								end,
+							},
+						},
 						Create "Frame" {
 							Name = "Card",
 							AnchorPoint = Vector2.new(0.5, 0.5),

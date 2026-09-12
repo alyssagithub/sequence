@@ -15,6 +15,22 @@ const Icon = require(script.Parent.Parent.Components.Icon)
 
 const Create = Vide.create
 
+const function PickRigs(): string?
+	local Added = 0
+
+	for _, Picked in Selection:Get() do
+		const Model = if Picked:IsA("Model") then Picked else Picked:FindFirstAncestorOfClass("Model")
+
+		if Model and Session.LoadRig(Model) then
+			Added += 1
+		end
+	end
+
+	Session.Offer(nil)
+
+	return if Added > 0 then nil else "Select a model with Motor6D or AnimationConstraint joints first"
+end
+
 const function LoadInto(Source: Instance)
 	const Loaded = Session.Rig()
 
@@ -228,6 +244,18 @@ return function()
 				LayoutOrder = 2,
 				Text = "Insert",
 			},
+		},
+		IconButton {
+			Icon = "plus",
+			Tooltip = "Add the selected rigs to the timeline",
+			LayoutOrder = 1.5,
+			OnClick = function()
+				const Problem = PickRigs()
+
+				if Problem then
+					Session.Say(Problem)
+				end
+			end,
 		},
 		TextField {
 			Value = function()

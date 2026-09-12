@@ -48,7 +48,8 @@ tools/build_rbxmx.py     builds plugin/ into an rbxmx that the Studio bridge can
 
 ## What it does
 
-Selecting any jointed model in the viewport loads it. The Insert button opens a window with a live
+With nothing loaded, selecting a jointed model asks whether to animate it. After that the + button
+adds whatever rigs are selected, so you can move models around without keying them. The Insert button opens a window with a live
 preview you can turn, an Account tab that builds any player by name or id (yours when empty) as their
 Original body or on an R6 or R15 rig, and Presets: the R6, R15, TemplateR6 and TemplateR15 dummies,
 shipped inside the plugin. Every Motor6D or AnimationConstraint joint becomes a track,
