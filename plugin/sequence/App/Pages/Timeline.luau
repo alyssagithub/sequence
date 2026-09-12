@@ -370,8 +370,8 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 
 			Create "Frame" {
 				Name = "Edge",
-				Position = UDim2.new(1, -1, 0, 0),
-				Size = UDim2.new(0, 1, 1, 0),
+				Position = UDim2.new(1, -2, 0, 0),
+				Size = UDim2.new(0, 2, 1, 0),
 				BackgroundColor3 = Theme.Colors.Border,
 				ZIndex = 4,
 			},
@@ -850,6 +850,14 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 				BackgroundTransparency = 1,
 				LayoutOrder = 2,
 				ClipsDescendants = true,
+
+				Create "Frame" {
+					Name = "Bottom",
+					Position = UDim2.new(0, 0, 1, -1),
+					Size = UDim2.new(1, 0, 0, 1),
+					BackgroundColor3 = Theme.Colors.Border,
+					ZIndex = 6,
+				},
 				InputBegan = function(Input: InputObject)
 					if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 						return
@@ -1106,6 +1114,30 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 		Active.Applied = Wanted
 	end
 
+	const function Modified(): boolean
+		return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+	end
+
+	const function OnWheel(Input: InputObject)
+		if Input.Position.X < LaneLeft() then
+			return
+		end
+
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+			const Under = TimeAt(Input.Position.X)
+			const Scaled = math.clamp(Zoom() * (if Input.Position.Z > 0 then 1.25 else 0.8), 10, 5000)
+
+			UserZoomed(true)
+			Zoom(Scaled)
+			Offset(math.max(0, Under - (Input.Position.X - LaneLeft() - LanePadding) / Scaled))
+		elseif Modified() then
+			UserZoomed(true)
+			Offset(math.clamp(Offset() - Input.Position.Z * 40 / Zoom(), 0, math.max(0, Session.SceneLength() - (LaneWidth() - LanePadding * 2) / Zoom())))
+		end
+	end
+
+	const ModifierHeld = Vide.source(false)
+
 	Root = Create "Frame" {
 		Name = "Timeline",
 		Size = UDim2.fromScale(1, 1),
@@ -1114,18 +1146,8 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 		InputChanged = function(Input: InputObject)
 			if Input.UserInputType == Enum.UserInputType.MouseMovement then
 				OnMove(Input.Position.X, Input.Position.Y)
-			elseif Input.UserInputType == Enum.UserInputType.MouseWheel and Input.Position.X >= LaneLeft() then
-				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-					const Under = TimeAt(Input.Position.X)
-					const Scaled = math.clamp(Zoom() * (if Input.Position.Z > 0 then 1.25 else 0.8), 10, 5000)
-
-					UserZoomed(true)
-					Zoom(Scaled)
-					Offset(math.max(0, Under - (Input.Position.X - LaneLeft() - LanePadding) / Scaled))
-				elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
-					UserZoomed(true)
-					Offset(math.clamp(Offset() - Input.Position.Z * 40 / Zoom(), 0, math.max(0, Session.SceneLength() - (LaneWidth() - LanePadding * 2) / Zoom())))
-				end
+			elseif Input.UserInputType == Enum.UserInputType.MouseWheel then
+				OnWheel(Input)
 			end
 		end,
 		InputEnded = function(Input: InputObject)
@@ -1135,7 +1157,16 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 		end,
 
 		Vide.action(function()
+			Vide.cleanup(UserInputService.InputBegan:Connect(function(Input: InputObject)
+				if Input.UserInputType == Enum.UserInputType.Keyboard then
+					ModifierHeld(Modified())
+				end
+			end))
 			Vide.cleanup(UserInputService.InputEnded:Connect(function(Input: InputObject)
+				if Input.UserInputType == Enum.UserInputType.Keyboard then
+					ModifierHeld(Modified())
+				end
+
 				if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 					EndDrag()
 				end
@@ -1161,8 +1192,16 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 				ScrollBarThickness = 6,
 				ScrollBarImageColor3 = Theme.Colors.DimText,
 				ScrollingDirection = Enum.ScrollingDirection.Y,
+				ScrollingEnabled = function()
+					return not ModifierHeld()
+				end,
 				Visible = function()
 					return Session.View() == "Sheet"
+				end,
+				InputChanged = function(Input: InputObject)
+					if Input.UserInputType == Enum.UserInputType.MouseWheel then
+						OnWheel(Input)
+					end
 				end,
 
 				Create "UIFlexItem" {FlexMode = Enum.UIFlexMode.Fill},

@@ -496,7 +496,7 @@ return function()
 
 		Create "UIPadding" {
 			PaddingLeft = UDim.new(0, 3),
-			PaddingRight = UDim.new(0, 3),
+			PaddingRight = UDim.new(0, 4),
 			PaddingTop = UDim.new(0, 3),
 		},
 		Create "UIGridLayout" {

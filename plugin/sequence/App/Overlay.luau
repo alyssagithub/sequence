@@ -45,6 +45,12 @@ function Overlay.MenuAt(Position: Vector2, Entries: {Entry}, Width: number?)
 end
 
 function Overlay.ShowTip(Text: string, Anchor: GuiObject)
+	const Current = Overlay.Tip()
+
+	if Current and Current.Anchor == Anchor and Current.Text == Text then
+		return
+	end
+
 	Overlay.Tip({Text = Text, Anchor = Anchor})
 end
 
@@ -90,26 +96,39 @@ function Overlay.Layer()
 				TextSize = Settings.SmallText,
 				FontFace = Font.fromEnum(Enum.Font.BuilderSans),
 				ZIndex = 110,
+				Interactable = false,
 				Text = function()
 					return Tip().Text
 				end,
 				Vide.action(function(Label: TextLabel)
-					Vide.effect(function()
+					const function Place()
 						const Current = Tip()
 						const Origin = if Root then Root.AbsolutePosition else Vector2.zero
 						const Room = if Root then Root.AbsoluteSize else Vector2.new(1000, 1000)
 						const Anchor = Current.Anchor
-						const Middle = Anchor.AbsolutePosition.X + Anchor.AbsoluteSize.X / 2 - Origin.X
-						const Below = Anchor.AbsolutePosition.Y + Anchor.AbsoluteSize.Y - Origin.Y
+						const Width = Label.AbsoluteSize.X
+						const Height = Label.AbsoluteSize.Y
+						const Left = Anchor.AbsolutePosition.X - Origin.X
+						const Top = Anchor.AbsolutePosition.Y - Origin.Y
 
-						task.defer(function()
-							const Width = Label.AbsoluteSize.X
-							const Height = Label.AbsoluteSize.Y
-							const X = math.clamp(Middle - Width / 2, 4, math.max(4, Room.X - Width - 4))
-							const Y = if Below + Height + 6 > Room.Y then Anchor.AbsolutePosition.Y - Origin.Y - Height - 4 else Below + 4
+						if Left < 60 then
+							Label.Position = UDim2.fromOffset(Left + Anchor.AbsoluteSize.X + 6, math.clamp(Top + Anchor.AbsoluteSize.Y / 2 - Height / 2, 4, math.max(4, Room.Y - Height - 4)))
 
-							Label.Position = UDim2.fromOffset(X, Y)
-						end)
+							return
+						end
+
+						const Middle = Left + Anchor.AbsoluteSize.X / 2
+						const Below = Top + Anchor.AbsoluteSize.Y
+						const X = math.clamp(Middle - Width / 2, 4, math.max(4, Room.X - Width - 4))
+						const Y = if Below + Height + 6 > Room.Y then Top - Height - 4 else Below + 4
+
+						Label.Position = UDim2.fromOffset(X, Y)
+					end
+
+					Vide.effect(function()
+						Tip()
+						Place()
+						task.defer(Place)
 					end)
 				end),
 

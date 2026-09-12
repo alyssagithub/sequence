@@ -44,6 +44,12 @@ return function()
 				},
 				Pieces.Rail,
 				Create "Frame" {
+					Name = "RailEdge",
+					Size = UDim2.new(0, 1, 1, 0),
+					BackgroundColor3 = Theme.Colors.Border,
+					LayoutOrder = 0.5,
+				},
+				Create "Frame" {
 					Name = "TimelineHolder",
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
