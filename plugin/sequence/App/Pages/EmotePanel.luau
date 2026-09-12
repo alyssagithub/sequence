@@ -53,15 +53,7 @@ return function()
 	const Rotation = Vide.source(0)
 	local Mannequin: Rig.Rig?
 
-	const Problems = Vide.derive(function()
-		const Loaded = Session.Rig()
-
-		if not Session.EmoteChecks() or not Loaded then
-			return {}
-		end
-
-		return Emote.Check(Session.Current(), Loaded)
-	end)
+	const Problems = Session.Problems
 
 	const function LoadMannequin(Viewport: ViewportFrame): Rig.Rig?
 		const Ok, Objects = pcall(game.GetObjects, game, "rbxasset://models/Thumbnails/Mannequins/Rthro.rbxm")

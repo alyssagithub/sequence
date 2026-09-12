@@ -9,7 +9,6 @@ const Session = require(script.Parent.Parent.Parent.Editor.Session)
 const Clip = require(script.Parent.Parent.Parent.Editor.Clip)
 const Rig = require(script.Parent.Parent.Parent.Editor.Rig)
 const Easing = require(script.Parent.Parent.Parent.Editor.Easing)
-const Emote = require(script.Parent.Parent.Parent.Editor.Emote)
 const Icon = require(script.Parent.Parent.Components.Icon)
 const IconButton = require(script.Parent.Parent.Components.IconButton)
 const CurveView = require(script.Parent.CurveView)
@@ -44,7 +43,7 @@ return function()
 	const UserZoomed = Vide.source(false)
 	const LaneWidth = Vide.source(400)
 	const Box = Vide.source(nil :: {From: Vector2, To: Vector2}?)
-	const RowFrames: {[Frame]: string} = {}
+	const RowFrames: {[Frame]: {Model: Model, Name: string}} = {}
 	local Root: Frame
 	local Drag: Drag?
 
@@ -78,15 +77,7 @@ return function()
 		end
 	end)
 
-	const Problems = Vide.derive(function()
-		const Loaded = Session.Rig()
-
-		if not Session.EmoteChecks() or not Loaded then
-			return {}
-		end
-
-		return Emote.Check(Session.Current(), Loaded)
-	end)
+	const Problems = Session.Problems
 
 	const function Ticks(): {{Time: number, Label: string}}
 		const Rate = Session.FrameRate()
@@ -402,9 +393,10 @@ return function()
 
 	const function TracksBetween(TopY: number, BottomY: number): {string}
 		const Found = {}
+		const Active = Session.Rig()
 
-		for Frame, Name in RowFrames do
-			if not Frame.Parent then
+		for Frame, Row in RowFrames do
+			if not Frame.Parent or not Active or Row.Model ~= Active.Model then
 				continue
 			end
 
@@ -412,7 +404,7 @@ return function()
 			const Bottom = Top + Frame.AbsoluteSize.Y
 
 			if Bottom >= TopY and Top <= BottomY then
-				table.insert(Found, Name)
+				table.insert(Found, Row.Name)
 			end
 		end
 
@@ -640,7 +632,7 @@ return function()
 			LayoutOrder = Order,
 
 			Vide.action(function(Object: Frame)
-				RowFrames[Object] = TrackName
+				RowFrames[Object] = {Model = Rig.Model, Name = TrackName}
 
 				Vide.cleanup(function()
 					RowFrames[Object] = nil
@@ -1139,8 +1131,7 @@ return function()
 		end
 
 		if Active.Kind == "Keys" then
-			Session.MoveSelectedKeys(Delta, "DragKeys")
-			Active.Applied += Delta
+			Active.Applied += Session.MoveSelectedKeys(Delta, "DragKeys")
 
 			return
 		end
@@ -1152,7 +1143,7 @@ return function()
 		end
 
 		const Moved = {
-			Time = math.clamp(Marker.Time + Wanted, 0, Session.Current().Length),
+			Time = math.clamp(Active.StartTime + Wanted, 0, Session.Current().Length),
 			Name = Marker.Name,
 			Value = Marker.Value,
 		}

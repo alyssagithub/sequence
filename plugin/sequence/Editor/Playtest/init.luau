@@ -79,6 +79,7 @@ function Playtest.Toggle()
 
 		Sequence.Name = `{Entry.Model.Name} {Current.Name}`
 		Sequence:SetAttribute("IsCharacter", Humanoid ~= nil and Entry.Loaded.Root.Name == "HumanoidRootPart")
+		Sequence:SetAttribute("RootName", Entry.Loaded.Root.Name)
 
 		const Link = Instance.new("ObjectValue")
 

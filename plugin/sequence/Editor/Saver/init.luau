@@ -26,7 +26,7 @@ Saver.Locations = {
 Saver.LocationLabels = {
 	Rig = "Rig > AnimSaves",
 	Roblox = "ServerStorage > AnimSaves",
-	Moon = "ServerStorage > MoonAnimatorSaves",
+	Moon = "ServerStorage > MoonAnimatorExport",
 }
 
 const function HasKeyBelow(Current: Clip.Clip, Joint: Rig.Joint, Time: number): boolean
@@ -43,15 +43,33 @@ const function HasKeyBelow(Current: Clip.Clip, Joint: Rig.Joint, Time: number): 
 	return false
 end
 
-const function Baked(Current: Clip.Clip, FrameRate: number): Clip.Clip
+const CurveNative = {
+	Linear = true,
+	Constant = true,
+	Cubic = true,
+}
+
+function Saver.Baked(Current: Clip.Clip, FrameRate: number, ForCurves: boolean?): Clip.Clip
 	local Edited = Current
+	const Native = if ForCurves then CurveNative else Easing.Native
 
 	for Name, Track in Clip.JointTracks(Current) do
+		const Last = Track.Keys[#Track.Keys]
+
+		if Last and not Native[Last.EasingStyle] then
+			Edited = Clip.SetKey(Edited, Name, {
+				Time = Last.Time,
+				Value = Last.Value,
+				EasingStyle = "Linear",
+				EasingDirection = "In",
+			})
+		end
+
 		for Index = 1, #Track.Keys - 1 do
 			const From = Track.Keys[Index]
 			const To = Track.Keys[Index + 1]
 
-			if Easing.Native[From.EasingStyle] then
+			if Native[From.EasingStyle] then
 				continue
 			end
 
@@ -103,7 +121,7 @@ const function WritePose(Current: Clip.Clip, Joint: Rig.Joint, Time: number, Par
 end
 
 function Saver.ToSequence(Source: Clip.Clip, Loaded: Rig.Rig, FrameRate: number): KeyframeSequence
-	const Current = Baked(Source, FrameRate)
+	const Current = Saver.Baked(Source, FrameRate)
 	const Sequence = Templates.Sequence:Clone()
 
 	Sequence.Name = Current.Name
@@ -131,6 +149,10 @@ function Saver.ToSequence(Source: Clip.Clip, Loaded: Rig.Rig, FrameRate: number)
 			Seen[Rounded] = true
 			table.insert(Times, Rounded)
 		end
+	end
+
+	if Current.Length > (Times[#Times] or 0) + 0.0005 then
+		table.insert(Times, Current.Length)
 	end
 
 	table.sort(Times)
@@ -312,7 +334,7 @@ const function WriteCurveFolder(Current: Clip.Clip, Joint: Rig.Joint, Parent: In
 end
 
 function Saver.ToCurve(Source: Clip.Clip, Loaded: Rig.Rig, FrameRate: number, Emote: boolean?): CurveAnimation
-	const Current = Baked(Source, FrameRate)
+	const Current = Saver.Baked(Source, FrameRate, true)
 	const Curve = Templates.Curve:Clone()
 
 	Curve.Name = Current.Name
@@ -733,7 +755,7 @@ function Saver.Folder(Loaded: Rig.Rig, Where: Location, Create: boolean): Instan
 	end
 
 	if Where == "Moon" then
-		const Found = ServerStorage:FindFirstChild("MoonAnimatorSaves")
+		const Found = ServerStorage:FindFirstChild("MoonAnimatorExport") or ServerStorage:FindFirstChild("MoonAnimatorSaves")
 
 		if Found or not Create then
 			return Found
@@ -741,7 +763,7 @@ function Saver.Folder(Loaded: Rig.Rig, Where: Location, Create: boolean): Instan
 
 		const Made = Templates.Folder:Clone()
 
-		Made.Name = "MoonAnimatorSaves"
+		Made.Name = "MoonAnimatorExport"
 		Made.Parent = ServerStorage
 
 		return Made
@@ -805,6 +827,10 @@ function Saver.Convert(Source: Instance, Loaded: Rig.Rig, FrameRate: number): (I
 
 	if not Read then
 		return nil, Problem
+	end
+
+	if Problem then
+		return nil, `Not converted, that animation has joints {Loaded.Model.Name} does not: load the rig it was made for first`
 	end
 
 	const Made: Instance = if Source:IsA("KeyframeSequence") then Saver.ToCurve(Read, Loaded, FrameRate, false) else Saver.ToSequence(Read, Loaded, FrameRate)

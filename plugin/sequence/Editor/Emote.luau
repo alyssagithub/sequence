@@ -3,6 +3,7 @@ const Clip = require(script.Parent.Clip)
 const Rig = require(script.Parent.Rig)
 const Pose = require(script.Parent.Pose)
 const Ik = require(script.Parent.Ik)
+const Saver = require(script.Parent.Saver)
 
 export type Problem = {
 	Time: number?,
@@ -55,7 +56,8 @@ function Emote.IsR15(Loaded: Rig.Rig): boolean
 	return true
 end
 
-function Emote.Check(Current: Clip.Clip, Loaded: Rig.Rig): {Problem}
+function Emote.Check(Source: Clip.Clip, Loaded: Rig.Rig, FrameRate: number): {Problem}
+	const Current = Saver.Baked(Source, FrameRate, true)
 	const Problems: {Problem} = {}
 	const Limits = Emote.Limits
 

@@ -110,6 +110,8 @@ const function Viewer(Order: number, Board: boolean)
 						if not Frame.IsPlaying then
 							Frame.TimePosition = Wanted
 							Frame:Play()
+						elseif math.abs(Frame.TimePosition - Wanted) > 0.25 then
+							Frame.TimePosition = Wanted
 						end
 					else
 						Frame:Pause()

@@ -2,7 +2,6 @@
 const CoreGui = game:GetService("CoreGui")
 const Vide = require(script.Parent.Parent.Packages.vide)
 const Session = require(script.Parent.Session)
-const Pose = require(script.Parent.Pose)
 const Rig = require(script.Parent.Rig)
 
 const Gizmo = {}
@@ -48,13 +47,13 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 			return
 		end
 
-		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * (Pose.Sample(Session.Current(), Session.Time())[Joint.Name] or CFrame.identity)
+		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * (Session.PoseNow()[Joint.Name] or CFrame.identity)
 	end
 
 	const function Begin()
 		Session.Stop()
 		Dragging = true
-		StartTransform = Pose.Sample(Session.Current(), Session.SnapTime(Session.Time()))[Joint.Name] or CFrame.identity
+		StartTransform = Session.PoseNow()[Joint.Name] or CFrame.identity
 	end
 
 	const function Finish()
@@ -94,6 +93,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 	Vide.effect(function()
 		Session.Current()
 		Session.Time()
+		Session.Scratch()
 		Place()
 	end)
 

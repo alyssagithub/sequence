@@ -79,8 +79,7 @@ function Hotkeys.Handle(Input: InputObject)
 	elseif Control and Key == Enum.KeyCode.V then
 		Session.Paste()
 	elseif Control and Key == Enum.KeyCode.D then
-		Session.Copy()
-		Session.Paste()
+		Session.Duplicate()
 	elseif Control and Key == Enum.KeyCode.A then
 		Session.SelectAllKeys()
 	end

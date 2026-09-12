@@ -9,6 +9,7 @@ const Clip = require(script.Parent.Clip)
 const Rig = require(script.Parent.Rig)
 const Pose = require(script.Parent.Pose)
 const Ik = require(script.Parent.Ik)
+const Emote = require(script.Parent.Emote)
 
 export type KeyRef = {
 	Joint: string,
@@ -55,6 +56,7 @@ const Session = {
 	View = Vide.source("Sheet" :: "Sheet" | "Curves"),
 	Panel = Vide.source(nil :: string?),
 	EmoteChecks = Vide.source(false),
+	Problems = Vide.source({} :: {Emote.Problem}),
 	Plugin = nil :: Plugin?,
 }
 
@@ -69,6 +71,8 @@ local NoticeToken = 0
 local ConfirmToken = 0
 local Applying = false
 local Reapplying = false
+local LastKeyboard = 0
+const Parked: {[Model]: Clip.Clip} = {}
 
 function Session.Say(Text: string)
 	NoticeToken += 1
@@ -106,7 +110,7 @@ function Session.EntryOfJoint(JointName: string): Entry?
 end
 
 function Session.SnapTime(Time: number): number
-	const Clamped = math.clamp(Time, 0, Session.Current().Length)
+	const Clamped = math.clamp(Time, 0, Session.SceneLength())
 
 	if not Session.Snap() then
 		return Clamped
@@ -412,7 +416,9 @@ function Session.SetJointTransform(JointName: string, Value: CFrame, MergeKey: s
 	const Changed = {}
 
 	for Name, Transform in Solved do
-		if Name == JointName or not (Sampled[Name] or CFrame.identity):FuzzyEq(Transform, 0.0001) or Session.Pins()[Name] then
+		const Pinned = Session.Pins()[Name] ~= nil and Entry ~= nil and #Ik.Chain(Entry.Loaded, JointName, Name) > 0
+
+		if Name == JointName or not (Sampled[Name] or CFrame.identity):FuzzyEq(Transform, 0.0001) or Pinned then
 			Changed[Name] = Transform
 		end
 	end
@@ -671,18 +677,18 @@ function Session.SelectionSpan(): (number, number)
 	return Lowest, Highest
 end
 
-function Session.MoveSelectedKeys(Offset: number, MergeKey: string?)
+function Session.MoveSelectedKeys(Offset: number, MergeKey: string?): number
 	const Refs = Session.SelectedKeys()
 
 	if #Refs == 0 or Offset == 0 then
-		return
+		return 0
 	end
 
 	const Lowest, Highest = Session.SelectionSpan()
 	const Clamped = math.clamp(Offset, -Lowest, Session.Current().Length - Highest)
 
 	if Clamped == 0 then
-		return
+		return 0
 	end
 
 	for _, Ref in Refs do
@@ -691,7 +697,7 @@ function Session.MoveSelectedKeys(Offset: number, MergeKey: string?)
 		if Blocking and not Session.IsSelected(Ref.Joint, Ref.Time + Clamped) then
 			Session.Say(`{Ref.Joint} already has a keyframe there`)
 
-			return
+			return 0
 		end
 	end
 
@@ -711,6 +717,20 @@ function Session.MoveSelectedKeys(Offset: number, MergeKey: string?)
 
 	Session.Edit(Edited, MergeKey)
 	Session.SelectedKeys(Moved)
+
+	return Clamped
+end
+
+function Session.Duplicate()
+	if #Session.SelectedKeys() == 0 then
+		return
+	end
+
+	const _, Highest = Session.SelectionSpan()
+
+	Session.Copy()
+	Session.Time(Session.ToFrame(Highest + 1 / Session.FrameRate()))
+	Session.Paste()
 end
 
 function Session.ScaleSelectedKeys(NewSpan: number)
@@ -740,7 +760,9 @@ function Session.ScaleSelectedKeys(NewSpan: number)
 		const Time = Session.ToFrame(Lowest + (Entry.Key.Time - Lowest) / Span * NewSpan)
 
 		if Clip.FindKey(Edited, Entry.Joint, Time) then
-			continue
+			Session.Say("That span would land two keys on the same frame, so nothing was changed")
+
+			return
 		end
 
 		Edited = Clip.SetKey(Edited, Entry.Joint, Sift.Dictionary.merge(Entry.Key, {Time = Time}), Entry.Track.Object, Entry.Track.Property)
@@ -854,6 +876,18 @@ function Session.ReverseSelected()
 	Session.SelectedKeys(Moved)
 end
 
+const Animatable = {
+	number = true,
+	boolean = true,
+	string = true,
+	CFrame = true,
+	Vector3 = true,
+	Vector2 = true,
+	Color3 = true,
+	UDim2 = true,
+	EnumItem = true,
+}
+
 function Session.AddPropertyTrack(Object: Instance, Property: string): boolean
 	const Ok, Value = pcall(function()
 		return (Object :: any)[Property]
@@ -861,6 +895,12 @@ function Session.AddPropertyTrack(Object: Instance, Property: string): boolean
 
 	if not Ok then
 		Session.Say(`{Object.Name} has no property called {Property}`)
+
+		return false
+	end
+
+	if not Animatable[typeof(Value)] then
+		Session.Say(`{Property} is a {typeof(Value)}, which cannot be keyframed`)
 
 		return false
 	end
@@ -944,7 +984,7 @@ const function Watch(Entry: Entry)
 				return
 			end
 
-			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+			if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or os.clock() - LastKeyboard < 1 then
 				if not IsActive then
 					Session.Activate(Entry.Model)
 				end
@@ -975,8 +1015,8 @@ const function Watch(Entry: Entry)
 			return
 		end
 
-		Session.RemoveRig(Entry.Model)
-		Session.Say(`{Entry.Model.Name} left the workspace, so it was released`)
+		Session.RemoveRig(Entry.Model, true)
+		Session.Say(`{Entry.Model.Name} left the workspace, so it was released. Its animation comes back if the model does`)
 	end))
 end
 
@@ -1026,9 +1066,11 @@ function Session.LoadRig(Model: Model): boolean
 	const Entry: Entry = {
 		Model = Model,
 		Loaded = Loaded,
-		Clip = Clip.New("Animation"),
+		Clip = Parked[Model] or Clip.New("Animation"),
 		Connections = {},
 	}
+
+	Parked[Model] = nil
 
 	Watch(Entry)
 
@@ -1041,13 +1083,18 @@ function Session.LoadRig(Model: Model): boolean
 	Session.Rigs(Sift.Array.push(Session.Rigs(), Entry))
 	Session.Rig(Loaded)
 	Session.SelectedJoint(nil)
+	Session.SelectedKeys({})
+	Session.SelectedMarker(nil)
+	Session.Scratch({})
 	Session.Pins({})
-	Session.Replace(Entry.Clip)
+	LastMergeKey = nil
+	Session.Current(Entry.Clip)
+	Session.Time(0)
 
 	return true
 end
 
-function Session.RemoveRig(Model: Model)
+function Session.RemoveRig(Model: Model, Keep: boolean?)
 	const Target = Session.Entry(Model)
 
 	if not Target then
@@ -1055,6 +1102,12 @@ function Session.RemoveRig(Model: Model)
 	end
 
 	Session.Stop()
+
+	if Keep then
+		const Active = Session.Rig()
+
+		Parked[Model] = if Active and Active.Model == Model then Session.Current() else Target.Clip
+	end
 
 	for _, Connection in Target.Connections do
 		Connection:Disconnect()
@@ -1124,12 +1177,38 @@ function Session.Start(CurrentPlugin: Plugin)
 		ApplyAll()
 	end)
 
+	Vide.effect(function()
+		Session.Time()
+
+		if not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+			Vide.untrack(Session.RefreshPins)
+		end
+	end)
+
+	Vide.effect(function()
+		const Loaded = Session.Rig()
+
+		if not Session.EmoteChecks() or not Loaded then
+			Session.Problems({})
+
+			return
+		end
+
+		Session.Problems(Emote.Check(Session.Current(), Loaded, Session.FrameRate()))
+	end)
+
 	ReleaseConnection = UserInputService.InputEnded:Connect(function(Input: InputObject)
 		if Input.UserInputType == Enum.UserInputType.MouseButton1 then
 			LastMergeKey = nil
 			Session.RefreshPins()
 		end
 	end)
+
+	table.insert(HistoryConnections, UserInputService.InputBegan:Connect(function(Input: InputObject)
+		if Input.UserInputType == Enum.UserInputType.Keyboard then
+			LastKeyboard = os.clock()
+		end
+	end))
 
 	for _, Signal in {ChangeHistoryService.OnUndo, ChangeHistoryService.OnRedo} do
 		table.insert(HistoryConnections, Signal:Connect(function()

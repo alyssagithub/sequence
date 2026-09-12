@@ -149,7 +149,7 @@ end
 return function(Props: Props)
 	const Hidden = Vide.source({} :: {[string]: boolean})
 	const Height = Vide.source(200)
-	local Dragging: {Channel: Channel, Time: number, StartValue: number, StartY: number, StartX: number, Applied: number}?
+	local Dragging: {Channel: Channel, Time: number, StartValue: number, StartY: number, PerPixel: number}?
 
 	const function TrackName(): string?
 		const Selected = Session.SelectedJoint()
@@ -275,9 +275,7 @@ return function(Props: Props)
 				return
 			end
 
-			const Low, High = Range()
-			const PerPixel = (High - Low) / (Height() - 24)
-			const Number = Active.StartValue - (Input.Position.Y - Active.StartY) * PerPixel
+			const Number = Active.StartValue - (Input.Position.Y - Active.StartY) * Active.PerPixel
 
 			WriteKey(Active.Channel, Active.Time, if Session.Snap() then math.round(Number * 100) / 100 else Number, `Curve {Active.Channel.Name}`)
 		end,
@@ -442,13 +440,14 @@ return function(Props: Props)
 									Session.Seek(Key.Time)
 								end
 
+								const Low, High = Range()
+
 								Dragging = {
 									Channel = Channel(),
 									Time = Key.Time,
 									StartValue = Channel().Read(Key.Value),
 									StartY = Input.Position.Y,
-									StartX = Input.Position.X,
-									Applied = 0,
+									PerPixel = (High - Low) / (Height() - 24),
 								}
 							end,
 

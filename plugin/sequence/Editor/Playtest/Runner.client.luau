@@ -164,6 +164,16 @@ const function Load()
 			continue
 		end
 
+		if not Clip:GetAttribute("IsCharacter") then
+			const Root = Clip:GetAttribute("RootName")
+
+			for _, Part in Model:GetDescendants() do
+				if Part:IsA("BasePart") and Part.Name ~= Root then
+					Part.Anchored = false
+				end
+			end
+		end
+
 		const Humanoid = Model:FindFirstChildOfClass("Humanoid")
 		const Animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
 
