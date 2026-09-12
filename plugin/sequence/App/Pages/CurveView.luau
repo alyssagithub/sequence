@@ -218,33 +218,47 @@ return function(Props: Props)
 		return (1 - (Value - Low) / (High - Low)) * (Height() - 24) + 12
 	end
 
-	const function Segments(Channel: Channel): {{X1: number, Y1: number, X2: number, Y2: number}}
+	const Samples = Vide.derive(function(): {{Time: number, Value: any}}
 		const Found = Track()
 		const Made = {}
 
-		if not Found or #Found.Keys < 2 or Hidden()[Channel.Name] then
+		if not Found or #Found.Keys < 2 then
 			return Made
 		end
 
 		const First = Found.Keys[1].Time
 		const Last = Found.Keys[#Found.Keys].Time
-		const Steps = math.clamp(math.floor((Props.XOf(Last) - Props.XOf(First)) / 3), 8, 400)
-		local PreviousX = Props.XOf(First)
-		local PreviousY = YOf(Channel.Read(Pose.SampleTrack(Found, First)))
+		const Steps = math.clamp(math.floor((Props.XOf(Last) - Props.XOf(First)) / 4), 8, 240)
 
-		for Step = 1, Steps do
+		for Step = 0, Steps do
 			const Time = First + (Last - First) * Step / Steps
-			const X = Props.XOf(Time)
-			const Y = YOf(Channel.Read(Pose.SampleTrack(Found, Time)))
 
-			table.insert(Made, {
-				X1 = PreviousX,
-				Y1 = PreviousY,
-				X2 = X,
-				Y2 = Y,
-			})
-			PreviousX = X
-			PreviousY = Y
+			table.insert(Made, {Time = Time, Value = Pose.SampleTrack(Found, Time)})
+		end
+
+		return Made
+	end)
+
+	const function Segments(Channel: Channel): {{X1: number, Y1: number, X2: number, Y2: number}}
+		const Made = {}
+
+		if Hidden()[Channel.Name] then
+			return Made
+		end
+
+		local Previous: {Time: number, Value: any}?
+
+		for _, Sample in Samples() do
+			if Previous then
+				table.insert(Made, {
+					X1 = Props.XOf(Previous.Time),
+					Y1 = YOf(Channel.Read(Previous.Value)),
+					X2 = Props.XOf(Sample.Time),
+					Y2 = YOf(Channel.Read(Sample.Value)),
+				})
+			end
+
+			Previous = Sample
 		end
 
 		return Made

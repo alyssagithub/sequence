@@ -7,7 +7,6 @@ const Hotkeys = require(script.Parent.Parent.Hotkeys)
 const Session = require(script.Parent.Parent.Parent.Editor.Session)
 const Header = require(script.Parent.Header)
 const Timeline = require(script.Parent.Timeline)
-const Inspector = require(script.Parent.Inspector)
 const ReferencePanel = require(script.Parent.ReferencePanel)
 const EmotePanel = require(script.Parent.EmotePanel)
 const Icon = require(script.Parent.Parent.Components.Icon)
@@ -136,17 +135,6 @@ return function()
 					EmotePanel(),
 				},
 			},
-			Create "Frame" {
-				Name = "Bottom",
-				Size = UDim2.new(1, 0, 0, 24),
-				BackgroundTransparency = 1,
-				LayoutOrder = 4,
-				Visible = function()
-					return Session.Rig() ~= nil and (Session.SelectedJoint() ~= nil or #Session.SelectedKeys() > 0 or Session.SelectedMarker() ~= nil or Session.Notice() ~= "")
-				end,
-
-				Inspector(),
-			},
 		},
 		Create "TextButton" {
 			Name = "OfferModal",
@@ -231,6 +219,30 @@ return function()
 						Session.Offer(nil)
 					end,
 				},
+			},
+		},
+		Create "TextLabel" {
+			Name = "Notice",
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -8),
+			AutomaticSize = Enum.AutomaticSize.XY,
+			BackgroundColor3 = Theme.Colors.Panel,
+			TextColor3 = Theme.Colors.Accent,
+			TextSize = Settings.SmallText,
+			FontFace = Font.fromEnum(Enum.Font.BuilderSansMedium),
+			Text = Session.Notice,
+			ZIndex = 60,
+			Visible = function()
+				return Session.Notice() ~= ""
+			end,
+
+			Create "UICorner" {CornerRadius = UDim.new(0, 4)},
+			Create "UIStroke" {Color = Theme.Colors.Border},
+			Create "UIPadding" {
+				PaddingLeft = UDim.new(0, 10),
+				PaddingRight = UDim.new(0, 10),
+				PaddingTop = UDim.new(0, 4),
+				PaddingBottom = UDim.new(0, 4),
 			},
 		},
 		Overlay.Layer(),

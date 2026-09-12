@@ -6,6 +6,7 @@ const Format = require(script.Parent.Parent.Parent.Format)
 const Theme = require(script.Parent.Parent.Theme)
 const Overlay = require(script.Parent.Parent.Overlay)
 const Session = require(script.Parent.Parent.Parent.Editor.Session)
+const Sift = require(script.Parent.Parent.Parent.Packages.sift)
 const Clip = require(script.Parent.Parent.Parent.Editor.Clip)
 const Rig = require(script.Parent.Parent.Parent.Editor.Rig)
 const Easing = require(script.Parent.Parent.Parent.Editor.Easing)
@@ -198,47 +199,126 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 			return
 		end
 
-		const Entries: {Overlay.Entry} = {}
+		const Count = #Session.SelectedKeys()
+		const Beside = Position + Vector2.new(24, 0)
 
-		for _, Style in Easing.Styles do
-			table.insert(Entries, {
-				Label = Style,
-				Checked = Key.EasingStyle == Style,
-				Action = function()
-					Session.SetSelectedEasing(Style, nil)
-				end,
-			})
+		const function StyleEntries(): {Overlay.Entry}
+			const Made: {Overlay.Entry} = {}
+
+			for Index, Style in Easing.Styles do
+				if Index == 6 then
+					table.insert(Made, {Label = "", Divider = true})
+				end
+
+				table.insert(Made, {
+					Label = Style,
+					Checked = Key.EasingStyle == Style,
+					Action = function()
+						Session.SetSelectedEasing(Style, nil)
+					end,
+				})
+			end
+
+			return Made
 		end
 
-		table.insert(Entries, {Label = "", Divider = true})
+		const function DirectionEntries(): {Overlay.Entry}
+			const Made: {Overlay.Entry} = {}
 
-		for _, Direction in Easing.Directions do
-			table.insert(Entries, {
-				Label = `Ease {Direction}`,
-				Checked = Key.EasingDirection == Direction,
-				Disabled = Key.EasingStyle == "Linear" or Key.EasingStyle == "Constant" or Key.EasingStyle == "Smooth",
-				Action = function()
-					Session.SetSelectedEasing(nil, Direction)
-				end,
-			})
+			for _, Direction in Easing.Directions do
+				table.insert(Made, {
+					Label = Direction,
+					Checked = Key.EasingDirection == Direction,
+					Action = function()
+						Session.SetSelectedEasing(nil, Direction)
+					end,
+				})
+			end
+
+			return Made
 		end
 
-		table.insert(Entries, {Label = "", Divider = true})
-		table.insert(Entries, {
-			Label = "Copy",
-			Action = Session.Copy,
-		})
-		table.insert(Entries, {
-			Label = "Reverse selected",
-			Disabled = #Session.SelectedKeys() < 2,
-			Action = Session.ReverseSelected,
-		})
-		table.insert(Entries, {
-			Label = "Delete",
-			Action = Session.DeleteSelectedKeys,
-		})
+		const Fixed = Key.EasingStyle == "Linear" or Key.EasingStyle == "Constant" or Key.EasingStyle == "Smooth"
 
-		Overlay.MenuAt(Position, Entries, 170)
+		Overlay.MenuAt(Position, {
+			{
+				Label = `Easing style: {Key.EasingStyle}  ›`,
+				Action = function()
+					task.defer(Overlay.MenuAt, Beside, StyleEntries(), 150)
+				end,
+			},
+			{
+				Label = if Fixed then "Easing direction" else `Easing direction: {Key.EasingDirection}  ›`,
+				Disabled = Fixed,
+				Action = function()
+					task.defer(Overlay.MenuAt, Beside, DirectionEntries(), 120)
+				end,
+			},
+			{Label = "", Divider = true},
+			{
+				Label = "Cut",
+				Action = function()
+					Session.Copy()
+					Session.DeleteSelectedKeys()
+				end,
+			},
+			{Label = "Copy", Action = Session.Copy},
+			{
+				Label = "Paste at playhead",
+				Disabled = #Session.Clipboard() == 0,
+				Action = Session.Paste,
+			},
+			{Label = "Duplicate", Action = Session.Duplicate},
+			{
+				Label = if Count > 1 then `Delete {Count} keyframes` else "Delete keyframe",
+				Action = Session.DeleteSelectedKeys,
+			},
+			{Label = "", Divider = true},
+			{
+				Label = "Reset to rest pose",
+				Disabled = Clip.IsProperty(TrackName),
+				Action = function()
+					for _, Ref in Session.SelectedKeys() do
+						if not Clip.IsProperty(Ref.Joint) then
+							Session.Edit(Clip.SetKey(Session.Current(), Ref.Joint, Sift.Dictionary.merge(Session.KeyAt(Ref.Joint, Ref.Time) :: Clip.Key, {Value = CFrame.identity})))
+						end
+					end
+				end,
+			},
+			{
+				Label = "Move to playhead",
+				Action = function()
+					const Lowest = Session.SelectionSpan()
+
+					Session.MoveSelectedKeys(Session.SnapTime(Session.Time()) - Lowest)
+				end,
+			},
+			{
+				Label = "Reverse",
+				Disabled = Count < 2,
+				Action = Session.ReverseSelected,
+			},
+			{
+				Label = "Mirror pose here",
+				Disabled = Clip.IsProperty(TrackName),
+				Action = function()
+					Session.Seek(Time)
+					Session.MirrorPose(nil)
+				end,
+			},
+			{Label = "", Divider = true},
+			{
+				Label = "Add event here",
+				Action = function()
+					Session.Edit(Clip.SetMarker(Session.Current(), {
+						Time = Time,
+						Name = "Event",
+						Value = "",
+					}))
+					Session.SelectedMarker(Clip.FindMarker(Session.Current(), Time, "Event"))
+				end,
+			},
+		}, 200)
 	end
 
 	const function LaneMenu(Position: Vector2, TrackName: string?)
@@ -1213,15 +1293,19 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 					return Row(Entry, Index)
 				end),
 			},
-			CurveView {
-				XOf = XOf,
-				TimeAt = TimeAt,
-				NameWidth = NameWidth,
-				LaneWidth = LaneWidth,
-				Visible = function()
-					return Session.View() == "Curves"
-				end,
-			},
+			Vide.show(function()
+				return Session.View() == "Curves"
+			end, function()
+				return CurveView {
+					XOf = XOf,
+					TimeAt = TimeAt,
+					NameWidth = NameWidth,
+					LaneWidth = LaneWidth,
+					Visible = function()
+						return true
+					end,
+				}
+			end),
 		},
 		Create "Frame" {
 			Name = "Box",

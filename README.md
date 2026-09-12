@@ -38,7 +38,7 @@ plugin/sequence/
     Overlay.luau         the popup layer that menus and dropdowns open into
     Hotkeys.luau         keyboard shortcuts while the widget has the mouse
     Components/          Button, IconButton, Icon, Toggle, Dropdown, NumberField, TextField
-    Pages/               Main, Header, Timeline, CurveView, Inspector, ReferencePanel, EmotePanel, InsertWindow
+    Pages/               Main, Header, Timeline, CurveView, ReferencePanel, EmotePanel, InsertWindow, Viewport
   Packages/
     vide, sift, typed, reel, lucide-icons, scythe, vow, testez   thin modules that require into _Index, the layout Loom writes
     _Index/                                 one folder per package at its pinned version, vendor code, never edited
@@ -67,8 +67,8 @@ Keys carry an easing style and direction. Linear, Constant, Cubic, Elastic and B
 exactly as the engine plays them. Sine, Quad, Quart, Quint, Expo, Circ, Back and Smooth are the
 Blender styles; they preview in the editor and are baked into per frame keys on save so the file
 plays back the same. The curve view shows the selected joint's position and rotation channels as
-editable curves. Box select in the sheet, scale a selection with the span field, copy, paste,
-duplicate and reverse.
+editable curves. Everything about a keyframe lives in its right click menu: easing style and
+direction, cut, copy, paste, duplicate, delete, reset, move to playhead, reverse, mirror, add event.
 
 Save writes a KeyframeSequence or a CurveAnimation to the rig's AnimSaves, to ServerStorage.RBX_ANIMSAVES
 the way Roblox's editor does, or to ServerStorage.MoonAnimatorExport, where Moon Animator's Export All puts its files. Open lists all three. Any saved
