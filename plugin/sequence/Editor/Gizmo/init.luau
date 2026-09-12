@@ -48,7 +48,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 			return
 		end
 
-		Pivot.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * (Pose.Sample(Session.Current(), Session.Time())[Joint.Name] or CFrame.identity)
+		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * (Pose.Sample(Session.Current(), Session.Time())[Joint.Name] or CFrame.identity)
 	end
 
 	const function Begin()
@@ -75,7 +75,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 		const Snapped = if Session.Snap() then math.rad(math.round(math.deg(Angle) / 5) * 5) else Angle
 
 		Session.SetJointTransform(Joint.Name, StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped), `Rotate {Joint.Name}`)
-		Pivot.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped)
+		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * StartTransform * CFrame.fromAxisAngle(AxisVectors[Axis], Snapped)
 	end))
 	table.insert(Connections, Movers.MouseButton1Down:Connect(Begin))
 	table.insert(Connections, Movers.MouseButton1Up:Connect(Finish))
@@ -83,7 +83,7 @@ const function Build(Loaded: Rig.Rig, Joint: Rig.Joint)
 		const Snapped = if Session.Snap() then math.round(Distance * 4) / 4 else Distance
 
 		Session.SetJointTransform(Joint.Name, StartTransform * CFrame.new(Vector3.fromNormalId(Face) * Snapped), `Move {Joint.Name}`)
-		Pivot.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * StartTransform * CFrame.new(Vector3.fromNormalId(Face) * Snapped)
+		Pivot.CFrame = Joint.Part0.CFrame * Joint.C0 * StartTransform * CFrame.new(Vector3.fromNormalId(Face) * Snapped)
 	end))
 
 	Vide.effect(function()

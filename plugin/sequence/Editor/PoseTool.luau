@@ -81,7 +81,7 @@ function PoseTool.Toggle()
 		const Delta = Vector2.new(Made.X, Made.Y) - Active.Origin
 		const Camera = workspace.CurrentCamera
 		const Joint = Active.Joint
-		const PivotWorld = Joint.Part0.CFrame * Joint.Motor.C0
+		const PivotWorld = Joint.Part0.CFrame * Joint.C0
 
 		if Active.Mode == "Move" then
 			const Offset = (Camera.CFrame.RightVector * Delta.X - Camera.CFrame.UpVector * Delta.Y) * 0.01

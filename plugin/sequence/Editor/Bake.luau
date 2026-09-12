@@ -32,11 +32,17 @@ function Bake.Pose(Loaded: Rig.Rig, Current: Clip.Clip, Time: number, Name: stri
 		for _, Joint in BakedRig.Joints do
 			const Transform = Sampled[Joint.Name] or CFrame.identity
 
-			Joint.Motor.C0 = Joint.Motor.C0 * Transform
+			Joint.C0 = Joint.C0 * Transform
+
+			if Joint.Motor:IsA("Motor6D") then
+				Joint.Motor.C0 = Joint.C0
+			elseif Joint.Motor.Attachment0 then
+				Joint.Motor.Attachment0.CFrame = Joint.C0
+			end
 		end
 
 		for _, Joint in BakedRig.Joints do
-			Joint.Part1.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * Joint.Motor.C1:Inverse()
+			Joint.Part1.CFrame = Joint.Part0.CFrame * Joint.C0 * Joint.C1:Inverse()
 		end
 	end
 

@@ -152,15 +152,6 @@ const function Load()
 			if Animate and Animate:IsA("LocalScript") then
 				Animate.Disabled = true
 			end
-
-			const Humanoid = Character:FindFirstChildOfClass("Humanoid")
-			const Animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
-
-			if Animator then
-				for _, Track in Animator:GetPlayingAnimationTracks() do
-					Track:Stop(0)
-				end
-			end
 		else
 			const Link = Clip:FindFirstChild("Target")
 
@@ -171,6 +162,17 @@ const function Load()
 			warn(`Sequence playtest could not find a rig for {Clip.Name}`)
 
 			continue
+		end
+
+		const Humanoid = Model:FindFirstChildOfClass("Humanoid")
+		const Animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
+
+		if Animator then
+			for _, Track in Animator:GetPlayingAnimationTracks() do
+				Track:Stop(0)
+			end
+
+			Animator:Destroy()
 		end
 
 		const Ok, Result = pcall(Start, Clip, Model)

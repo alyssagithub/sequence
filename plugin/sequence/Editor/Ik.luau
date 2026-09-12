@@ -6,7 +6,7 @@ const Ik = {}
 const function WorldOf(Loaded: Rig.Rig, Pose: {[string]: CFrame}, Joint: Rig.Joint): CFrame
 	const Parent = if Joint.Parent then WorldOf(Loaded, Pose, Joint.Parent) else Loaded.Root.CFrame
 
-	return Parent * Joint.Motor.C0 * (Pose[Joint.Name] or CFrame.identity) * Joint.Motor.C1:Inverse()
+	return Parent * Joint.C0 * (Pose[Joint.Name] or CFrame.identity) * Joint.C1:Inverse()
 end
 
 function Ik.Chain(Loaded: Rig.Rig, MovedName: string?, PinName: string): {Rig.Joint}
@@ -44,7 +44,7 @@ function Ik.Solve(Loaded: Rig.Rig, Pose: {[string]: CFrame}, Chain: {Rig.Joint},
 		for Index = #Chain, 1, -1 do
 			const Joint = Chain[Index]
 			const JointWorld = WorldOf(Loaded, Solved, Joint)
-			const Pivot = if Joint.Parent then WorldOf(Loaded, Solved, Joint.Parent) * Joint.Motor.C0 else Loaded.Root.CFrame * Joint.Motor.C0
+			const Pivot = if Joint.Parent then WorldOf(Loaded, Solved, Joint.Parent) * Joint.C0 else Loaded.Root.CFrame * Joint.C0
 			const EndWorld = WorldOf(Loaded, Solved, Pin).Position
 			const ToEnd = EndWorld - Pivot.Position
 			const ToTarget = Target.Position - Pivot.Position
@@ -62,7 +62,7 @@ function Ik.Solve(Loaded: Rig.Rig, Pose: {[string]: CFrame}, Chain: {Rig.Joint},
 			const Angle = math.acos(math.clamp(ToEnd.Unit:Dot(ToTarget.Unit), -1, 1))
 			const Rotation = CFrame.fromAxisAngle(Axis.Unit, Angle)
 			const NewJointWorld = CFrame.new(Pivot.Position) * Rotation * CFrame.new(-Pivot.Position) * JointWorld
-			const Local = Pivot:Inverse() * NewJointWorld * Joint.Motor.C1
+			const Local = Pivot:Inverse() * NewJointWorld * Joint.C1
 
 			Solved[Joint.Name] = Local - Local.Position + (Solved[Joint.Name] or CFrame.identity).Position
 		end
@@ -73,7 +73,7 @@ function Ik.Solve(Loaded: Rig.Rig, Pose: {[string]: CFrame}, Chain: {Rig.Joint},
 	end
 
 	const PinParentWorld = if Pin.Parent then WorldOf(Loaded, Solved, Pin.Parent) else Loaded.Root.CFrame
-	const Wanted = (PinParentWorld * Pin.Motor.C0):Inverse() * Target * Pin.Motor.C1
+	const Wanted = (PinParentWorld * Pin.C0):Inverse() * Target * Pin.C1
 
 	Solved[Pin.Name] = Wanted.Rotation + (Solved[Pin.Name] or CFrame.identity).Position
 

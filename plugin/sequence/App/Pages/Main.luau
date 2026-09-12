@@ -111,7 +111,7 @@ return function()
 								TextSize = Settings.TextSize,
 								FontFace = Font.fromEnum(Enum.Font.BuilderSans),
 								TextWrapped = true,
-								Text = "Select one or more rigs in the viewport, then press the rig button above. Any model with Motor6D joints works: characters, doors, vehicles.",
+								Text = "Select one or more rigs in the viewport, then press the rig button above. Any model with Motor6D or AnimationConstraint joints works: characters, doors, vehicles.",
 								LayoutOrder = 3,
 								ZIndex = 31,
 

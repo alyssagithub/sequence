@@ -1,7 +1,9 @@
 --!strict
 export type Joint = {
 	Name: string,
-	Motor: Motor6D,
+	Motor: Motor6D | AnimationConstraint,
+	C0: CFrame,
+	C1: CFrame,
 	Part0: BasePart,
 	Part1: BasePart,
 	Parent: Joint?,
@@ -20,12 +22,39 @@ export type Rig = {
 
 const Rig = {}
 
-function Rig.FindMotors(Model: Model): {Motor6D}
+export type Link = {
+	Joint: Motor6D | AnimationConstraint,
+	Part0: BasePart,
+	Part1: BasePart,
+	C0: CFrame,
+	C1: CFrame,
+}
+
+function Rig.FindMotors(Model: Model): {Link}
 	const Motors = {}
 
 	for _, Descendant in Model:GetDescendants() do
 		if Descendant:IsA("Motor6D") and Descendant.Part0 and Descendant.Part1 and Descendant.Part0:IsDescendantOf(Model) and Descendant.Part1:IsDescendantOf(Model) then
-			table.insert(Motors, Descendant)
+			table.insert(Motors, {
+				Joint = Descendant,
+				Part0 = Descendant.Part0 :: BasePart,
+				Part1 = Descendant.Part1 :: BasePart,
+				C0 = Descendant.C0,
+				C1 = Descendant.C1,
+			})
+		elseif Descendant:IsA("AnimationConstraint") and Descendant.Attachment0 and Descendant.Attachment1 then
+			const Part0 = Descendant.Attachment0.Parent
+			const Part1 = Descendant.Attachment1.Parent
+
+			if Part0 and Part1 and Part0:IsA("BasePart") and Part1:IsA("BasePart") and Part0:IsDescendantOf(Model) and Part1:IsDescendantOf(Model) then
+				table.insert(Motors, {
+					Joint = Descendant,
+					Part0 = Part0,
+					Part1 = Part1,
+					C0 = Descendant.Attachment0.CFrame,
+					C1 = Descendant.Attachment1.CFrame,
+				})
+			end
 		end
 	end
 
@@ -39,10 +68,10 @@ function Rig.Load(Model: Model): Rig?
 		return nil
 	end
 
-	const ByPart1: {[BasePart]: Motor6D} = {}
+	const ByPart1: {[BasePart]: Link} = {}
 
 	for _, Motor in Motors do
-		ByPart1[Motor.Part1 :: BasePart] = Motor
+		ByPart1[Motor.Part1] = Motor
 	end
 
 	local Root: BasePart? = Model.PrimaryPart
@@ -51,7 +80,7 @@ function Rig.Load(Model: Model): Rig?
 		Root = nil
 
 		for _, Motor in Motors do
-			if not ByPart1[Motor.Part0 :: BasePart] then
+			if not ByPart1[Motor.Part0] then
 				Root = Motor.Part0
 				break
 			end
@@ -74,21 +103,26 @@ function Rig.Load(Model: Model): Rig?
 	const function Descend(Part: BasePart, Parent: Joint?, Depth: number)
 		const Attached = {}
 
+		const SeenPart1: {[BasePart]: boolean} = {}
+
 		for _, Motor in Motors do
-			if Motor.Part0 == Part and Motor.Part1 ~= Part and not Loaded.ByName[(Motor.Part1 :: BasePart).Name] then
+			if Motor.Part0 == Part and Motor.Part1 ~= Part and not Loaded.ByName[Motor.Part1.Name] and not SeenPart1[Motor.Part1] then
+				SeenPart1[Motor.Part1] = true
 				table.insert(Attached, Motor)
 			end
 		end
 
-		table.sort(Attached, function(A: Motor6D, B: Motor6D)
-			return (A.Part1 :: BasePart).Name < (B.Part1 :: BasePart).Name
+		table.sort(Attached, function(A: Link, B: Link)
+			return A.Part1.Name < B.Part1.Name
 		end)
 
 		for _, Motor in Attached do
-			const Part1 = Motor.Part1 :: BasePart
+			const Part1 = Motor.Part1
 			const Joint: Joint = {
 				Name = Part1.Name,
-				Motor = Motor,
+				Motor = Motor.Joint,
+				C0 = Motor.C0,
+				C1 = Motor.C1,
 				Part0 = Part,
 				Part1 = Part1,
 				Parent = Parent,
@@ -144,8 +178,19 @@ function Rig.Apply(Loaded: Rig, Pose: {[string]: CFrame})
 	Loaded.Applying = true
 
 	for _, Joint in Loaded.Joints do
-		if Joint.Part1.Parent and Joint.Part0.Parent then
-			Joint.Part1.CFrame = Joint.Part0.CFrame * Joint.Motor.C0 * (Pose[Joint.Name] or CFrame.identity) * Joint.Motor.C1:Inverse()
+		if not Joint.Part1.Parent or not Joint.Part0.Parent then
+			continue
+		end
+
+		const Transform = Pose[Joint.Name] or CFrame.identity
+		const Wanted = Joint.Part0.CFrame * Joint.C0 * Transform * Joint.C1:Inverse()
+
+		if Joint.Motor:IsA("AnimationConstraint") then
+			Joint.Motor.Transform = Transform
+		end
+
+		if not Joint.Part1.CFrame:FuzzyEq(Wanted, 0.00001) then
+			Joint.Part1.CFrame = Wanted
 		end
 	end
 
@@ -153,7 +198,7 @@ function Rig.Apply(Loaded: Rig, Pose: {[string]: CFrame})
 end
 
 function Rig.ReadTransform(Joint: Joint): CFrame
-	return Joint.Motor.C0:Inverse() * Joint.Part0.CFrame:Inverse() * Joint.Part1.CFrame * Joint.Motor.C1
+	return Joint.C0:Inverse() * Joint.Part0.CFrame:Inverse() * Joint.Part1.CFrame * Joint.C1
 end
 
 function Rig.JointOf(Loaded: Rig, Part: Instance): Joint?

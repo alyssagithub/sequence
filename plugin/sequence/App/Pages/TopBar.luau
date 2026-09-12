@@ -26,7 +26,7 @@ const function PickRigs(): string?
 		end
 	end
 
-	return if Added > 0 then nil else "Select a model with Motor6D joints first"
+	return if Added > 0 then nil else "Select a model with Motor6D or AnimationConstraint joints first"
 end
 
 const function LoadInto(Source: Instance)

@@ -68,6 +68,7 @@ local HistoryConnections: {RBXScriptConnection} = {}
 local NoticeToken = 0
 local ConfirmToken = 0
 local Applying = false
+local Reapplying = false
 
 function Session.Say(Text: string)
 	NoticeToken += 1
@@ -953,7 +954,15 @@ const function Watch(Entry: Entry)
 				return
 			end
 
-			task.defer(function()
+			if Reapplying then
+				return
+			end
+
+			Reapplying = true
+
+			task.delay(0, function()
+				Reapplying = false
+
 				if not Loaded.Applying and Session.Entry(Entry.Model) then
 					ApplyAll()
 				end
