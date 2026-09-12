@@ -31,7 +31,7 @@ export type Link = {
 }
 
 function Rig.FindMotors(Model: Model): {Link}
-	const Motors = {}
+	const Motors: {Link} = {}
 
 	for _, Descendant in Model:GetDescendants() do
 		if Descendant:IsA("Motor6D") and Descendant.Part0 and Descendant.Part1 and Descendant.Part0:IsDescendantOf(Model) and Descendant.Part1:IsDescendantOf(Model) then
