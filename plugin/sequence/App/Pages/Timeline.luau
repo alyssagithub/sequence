@@ -47,6 +47,7 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 	const RowFrames: {[Frame]: {Model: Model, Name: string}} = {}
 	local Root: Frame
 	local Drag: Drag?
+	local EndDrag: () -> ()
 
 	const function RowHeight(): number
 		return Settings.TextSize() + 5
@@ -412,6 +413,11 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 					Props.OnMenu(Vector2.new(Input.Position.X, Input.Position.Y))
 				end
 			end,
+			InputEnded = function(Input: InputObject)
+				if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+					EndDrag()
+				end
+			end,
 
 			Create "Frame" {
 				Name = "Shape",
@@ -492,7 +498,7 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 		return Found
 	end
 
-	const function EndDrag()
+	EndDrag = function()
 		const Active = Drag
 
 		if not Active then
@@ -1162,6 +1168,12 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 			return
 		end
 
+		if not Active.Moved and math.abs(X - Active.StartX) <= 4 then
+			return
+		end
+
+		Active.Moved = true
+
 		const Wanted = Session.ToFrame(Active.StartTime + (X - Active.StartX) / Zoom()) - Active.StartTime
 		const Delta = Wanted - Active.Applied
 
@@ -1234,6 +1246,11 @@ return function(HeaderPieces: () -> {NameRow: Instance})
 		end,
 		InputEnded = function(Input: InputObject)
 			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+				EndDrag()
+			end
+		end,
+		MouseLeave = function()
+			if Drag and Drag.Kind ~= "Box" and not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
 				EndDrag()
 			end
 		end,
