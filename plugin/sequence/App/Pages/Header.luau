@@ -486,13 +486,27 @@ return function()
 		}, 260)
 	end
 
+	const RailHeight = Vide.source(0)
+
 	const Rail = Create "Frame" {
 		Name = "Rail",
-		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 1, 0),
+		Size = function()
+			const Rows = math.max(1, math.floor((RailHeight() - 3) / 25))
+			const Columns = math.ceil(12 / Rows)
+
+			return UDim2.new(0, 7 + Columns * 26 - 2, 1, 0)
+		end,
 		BackgroundColor3 = Theme.Colors.Panel,
 		LayoutOrder = 0,
 		ZIndex = 5,
+
+		Vide.action(function(Object: Frame)
+			Vide.cleanup(Object:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+				if Object.AbsoluteSize.Y ~= RailHeight() then
+					RailHeight(Object.AbsoluteSize.Y)
+				end
+			end))
+		end),
 
 		Create "UIPadding" {
 			PaddingLeft = UDim.new(0, 3),
